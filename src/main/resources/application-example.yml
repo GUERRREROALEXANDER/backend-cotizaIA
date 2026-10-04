@@ -39,7 +39,7 @@ pricing:
   phased-coordination-overhead: ${PRICING_PHASED_OVERHEAD:0.10}
 
 llm:
-  # Optional. Which AI provider the LlmClient adapter uses: "ollama" (dev) or "groq" (prod).
+  # Optional. Which AI provider the LlmClient adapter uses: "ollama", "groq", or "stub" (offline).
   provider: ${LLM_PROVIDER:ollama}
   ollama:
     # Optional. Base URL of the local Ollama server.
@@ -53,6 +53,13 @@ llm:
     api-key: ${GROQ_API_KEY:}
     # Optional. Groq model id.
     model: ${GROQ_MODEL:llama-3.1-8b-instant}
+  timeout:
+    connect: ${LLM_CONNECT_TIMEOUT:5s}
+    read: ${LLM_READ_TIMEOUT:60s}
+  retry:
+    max-attempts: ${LLM_RETRY_MAX_ATTEMPTS:3}
+    initial-backoff: ${LLM_RETRY_INITIAL_BACKOFF:500ms}
+    multiplier: ${LLM_RETRY_MULTIPLIER:2.0}
 
 # =============================================================================
 # Required environment variables
@@ -65,7 +72,12 @@ llm:
 # Optional environment variables
 # =============================================================================
 # PORT             HTTP port (default 8080).
-# LLM_PROVIDER     ollama | groq (default ollama).
+# LLM_PROVIDER     ollama | groq | stub (default ollama).
+# LLM_CONNECT_TIMEOUT  Default 5s.
+# LLM_READ_TIMEOUT     Default 60s.
+# LLM_RETRY_MAX_ATTEMPTS  Default 3.
+# LLM_RETRY_INITIAL_BACKOFF  Default 500ms.
+# LLM_RETRY_MULTIPLIER  Default 2.0.
 # OLLAMA_BASE_URL  Default http://localhost:11434.
 # OLLAMA_MODEL     Default llama3.1.
 # GROQ_BASE_URL    Default https://api.groq.com/openai/v1.
