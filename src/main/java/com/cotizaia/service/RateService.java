@@ -19,7 +19,9 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>The service is the only place that writes {@link Rate}s, which makes it
  * the natural owner of cache invalidation: every mutation drops the affected
- * key in the {@link RateConfiguration} Singleton, so {@link #currentRate} can
+ * key in the {@link RateConfiguration} GoF Singleton
+ * (the injected bean published by {@code RateConfigurationBeans} is
+ * {@link RateConfiguration#getInstance()}), so {@link #currentRate} can
  * safely be read-through. Pricing never reads {@link RateRepository} directly
  * (acceptance criterion), it always resolves through the Singleton cache.
  *
@@ -126,7 +128,7 @@ public class RateService {
 
     /**
      * Resolves the rate valid at {@code at} for a role, reading through the
-     * {@link RateConfiguration} Singleton. If the cache misses, it loads the
+     * {@link RateConfiguration} GoF Singleton ({@link RateConfiguration#getInstance()}). If the cache misses, it loads the
      * whole rate timeline from the repository and caches it; an update
      * invalidates that key, so the next read picks the new number. Effective
      * selection runs on the cached timeline, which keeps one cache entry per

@@ -11,14 +11,13 @@ import java.util.concurrent.ConcurrentHashMap;
  * single instance removes the risk of two parts of the app pricing a brief
  * with different numbers.
  *
- * <p><b>How the single instance is guaranteed.</b> This class is wired as a
- * Spring bean with default singleton scope (see {@code RateConfigurationBeans}),
- * so the injected instance is the only one. No {@code static getInstance()}
- * with a private constructor is exposed, because static state survives between
- * tests and hides dependencies. The thread-safe, lazy behaviour a hand-rolled
- * Singleton would implement with volatile double-checked locking is delegated
- * to {@link ConcurrentHashMap}: {@code computeIfAbsent} gives per-key atomic
- * creation, which is far safer than a hand-written double-check.
+ * <p><b>How the single instance is guaranteed.</b> GoF Singleton via the
+ * initialization-on-demand holder idiom: the constructor is private and the
+ * sole instance lives in the static {@code Holder}, created once by the class
+ * loader on the first {@link #getInstance()} call. This is thread-safe without
+ * explicit synchronization. {@code RateConfigurationBeans} exposes that same
+ * instance as a Spring bean, so injected references and direct
+ * {@code getInstance()} lookups resolve to one object.
  *
  * <p><b>What risk this contains.</b> Rates are edited by the agency owner while
  * the pricing pipeline reads them concurrently, and a role can carry several
@@ -38,7 +37,18 @@ public final class RateConfiguration {
      */
     private final Map<Long, Map<Long, List<CachedRate>>> cache = new ConcurrentHashMap<>();
 
-    public RateConfiguration() {
+    private RateConfiguration() {
+    }
+
+    private static final class Holder {
+        private static final RateConfiguration INSTANCE = new RateConfiguration();
+    }
+
+    /**
+     * Returns the single shared {@code RateConfiguration} instance.
+     */
+    public static RateConfiguration getInstance() {
+        return Holder.INSTANCE;
     }
 
     /**

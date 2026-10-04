@@ -4,19 +4,17 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * Wires the {@link RateConfiguration} Singleton as a Spring-managed bean.
+ * Exposes the {@link RateConfiguration} GoF Singleton as a Spring-managed bean.
  *
- * <p>Why a bean and not a static holder: the Singleton pattern is about a
- * single shared instance, and Spring's default singleton scope already
- * guarantees exactly that per application context. Making it a bean keeps the
- * class unit-testable (no static state leaking between tests) while preserving
- * the one-instance-per-application guarantee.
+ * <p>The single instance is owned by {@link RateConfiguration#getInstance()}
+ * (initialization-on-demand holder); this bean simply publishes that same
+ * object so injection and direct lookups never diverge into two caches.
  */
 @Configuration
 public class RateConfigurationBeans {
 
     @Bean
     public RateConfiguration rateConfiguration() {
-        return new RateConfiguration();
+        return RateConfiguration.getInstance();
     }
 }

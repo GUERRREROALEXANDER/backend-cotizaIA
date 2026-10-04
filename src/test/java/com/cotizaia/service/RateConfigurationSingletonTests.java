@@ -44,10 +44,11 @@ class RateConfigurationSingletonTests {
 
     @Test
     void rateConfigurationIsASingleSharedInstance() {
-        // The injected Singleton must be the same object the context created:
-        // one shared cache, no per-classloader duplicate.
+        // Two GoF lookups must return the same object, and the injected
+        // Spring bean must be that same instance: one shared cache.
         assertThat(rateService).isNotNull();
-        assertThat(rateConfiguration).isSameAs(rateConfiguration);
+        assertThat(RateConfiguration.getInstance()).isSameAs(RateConfiguration.getInstance());
+        assertThat(rateConfiguration).isSameAs(RateConfiguration.getInstance());
     }
 
     @Test
