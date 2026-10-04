@@ -12,6 +12,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
@@ -94,6 +95,14 @@ public class Proposal {
     @OneToMany(mappedBy = "proposal", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProposalExtra> appliedExtras = new ArrayList<>();
 
+    /**
+     * The proposal's smart schedule (project.txt section 5, section 9 schema:
+     * Propuesta -> Cronograma). Optional: a proposal in review may not have one
+     * yet. Kept here so an hour edit can cascade into it.
+     */
+    @OneToOne(mappedBy = "proposal", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Schedule schedulePlan;
+
     protected Proposal() {
     }
 
@@ -155,6 +164,63 @@ public class Proposal {
             extra.detach();
             recomputeTotals();
         }
+    }
+
+    /**
+     * Sum of hours across the current quoted lines; the schedule derives every
+     * phase duration from this.
+     */
+    public BigDecimal getTotalQuotedHours() {
+        BigDecimal sum = BigDecimal.ZERO;
+        for (QuotedItem item : items) {
+            sum = sum.add(item.getHours());
+        }
+        return sum.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    /**
+     * Approves a human adjustment of one quoted line's hours and cascades it
+     * (project.txt section 5: "Si el humano cambia las horas al aprobar, el
+     * cronograma se recalcula en cascada"). The line is immutable, so the edit
+     * is applied by replacing it on the aggregate with the same requirement,
+     * unit price and new hours; adding it recomputes the totals, and then the
+     * attached schedule re-derives every phase duration and downstream shift.
+     */
+    public QuotedItem editHours(QuotedItem item, BigDecimal newHours) {
+        if (!items.contains(item)) {
+            throw new IllegalArgumentException("item does not belong to this proposal");
+        }
+        if (newHours == null || newHours.signum() < 0) {
+            throw new IllegalArgumentException("hours must not be null or negative");
+        }
+        int index = items.indexOf(item);
+        QuotedItem edited = new QuotedItem(this, item.getRequirement(), newHours, item.getUnitPrice());
+        items.set(index, edited);
+        item.detach();
+        recomputeTotals();
+        // Cascade: the schedule derives from hours, so it must follow the edit.
+        if (schedulePlan != null) {
+            schedulePlan.recalculate();
+        }
+        return edited;
+    }
+
+    /**
+     * Attaches (or replaces) the proposal's smart schedule and places it. The
+     * owning side is set here, mirroring how {@link #addItem} owns lines.
+     */
+    public Schedule attachSchedule(BigDecimal hoursPerWeek) {
+        if (schedulePlan != null) {
+            schedulePlan.detach();
+        }
+        Schedule schedule = Schedule.forProposal(this, hoursPerWeek);
+        this.schedulePlan = schedule;
+        schedule.recalculate();
+        return schedule;
+    }
+
+    public Schedule getSchedulePlan() {
+        return schedulePlan;
     }
 
     /** Moves the proposal through its lifecycle; illegal jumps are rejected. */
