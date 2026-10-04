@@ -38,7 +38,11 @@ public class PricingService {
         this.resolver = resolver;
     }
 
-    @Transactional(readOnly = true)
+    /**
+     * Read-only, so a missing-rate failure must not mark the caller's transaction rollback-only: the agent's
+     * run recorder has to commit the FAILED log after this exception.
+     */
+    @Transactional(readOnly = true, noRollbackFor = NoSuchElementException.class)
     public PricingQuote quote(Long agencyId, PricingModel modelOrNull, List<PricingLine> lines) {
         Agency agency = agencyRepository.findById(agencyId)
                 .orElseThrow(() -> new NoSuchElementException("Agency not found: " + agencyId));
@@ -47,7 +51,7 @@ public class PricingService {
         return resolver.forModel(model).price(new PricingRequest(lines, hourlyRate));
     }
 
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, noRollbackFor = NoSuchElementException.class)
     public long blendedRate(Long agencyId, Instant at) {
         List<Long> rates = roleRepository.findByAgencyIdOrderByIdAsc(agencyId).stream()
                 .map(Role::getId)
