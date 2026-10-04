@@ -1,5 +1,6 @@
 package com.cotizaia.api;
 
+import com.cotizaia.domain.state.InvalidStateTransitionException;
 import com.cotizaia.ingest.UnsupportedChannelException;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -14,6 +15,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  */
 @RestControllerAdvice
 public class ApiExceptionHandler {
+
+    @ExceptionHandler(InvalidStateTransitionException.class)
+    @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
+    public Map<String, String> invalidStateTransition(InvalidStateTransitionException exception) {
+        return Map.of("error", exception.getMessage(), "from", exception.getFrom().name(),
+                "to", exception.getTo().name());
+    }
 
     @ExceptionHandler({IllegalArgumentException.class, UnsupportedChannelException.class})
     @ResponseStatus(HttpStatus.BAD_REQUEST)
