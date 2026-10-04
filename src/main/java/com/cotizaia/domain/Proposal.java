@@ -38,11 +38,18 @@ import java.util.List;
  *       rejected in the domain.</li>
  * </ul>
  *
- * <p>It composes its {@link QuotedItem} children: a single save persists the
- * whole graph and removing the proposal removes them. {@code subtotal} and
- * {@code total} are recomputed from the lines by {@link #recomputeTotals()} and
- * exposed read-only, so a stored total that disagrees with the items cannot be
- * produced by the domain.
+ * <p>It composes its {@link QuotedItem} children and its structured
+ * {@link ProposalExtra} extras: a single save persists the whole graph and
+ * removing the proposal removes them. {@code subtotal} is recomputed from the
+ * lines and {@code total} is the subtotal plus the extras by
+ * {@link #recomputeTotals()}, both exposed read-only, so a stored total that
+ * disagrees with its inputs cannot be produced by the domain.
+ *
+ * <p><b>Decorator integration.</b> The extras are the persisted result of a
+ * {@link PricedProposal} chain: each {@link ProposalPriceDecorator} records its
+ * signed delta through {@link #addExtra}, so after a decoration the total here
+ * equals the decorator's {@link PricedProposal#total()} (project.txt section 6
+ * pattern 6).
  */
 @Entity
 @Table(name = "proposals")
@@ -83,6 +90,9 @@ public class Proposal {
 
     @OneToMany(mappedBy = "proposal", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<QuotedItem> items = new ArrayList<>();
+
+    @OneToMany(mappedBy = "proposal", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ProposalExtra> appliedExtras = new ArrayList<>();
 
     protected Proposal() {
     }
@@ -127,6 +137,26 @@ public class Proposal {
         }
     }
 
+    /**
+     * Records one applied extra (project.txt section 9: Propuesta -> Extra).
+     * Called by {@link ProposalPriceDecorator#recordOn}, which supplies the
+     * decorator's type, rate magnitude and signed delta.
+     */
+    public ProposalExtra addExtra(String type, BigDecimal percentOrFixed, BigDecimal amount) {
+        ProposalExtra extra = new ProposalExtra(this, type, percentOrFixed, amount);
+        appliedExtras.add(extra);
+        recomputeTotals();
+        return extra;
+    }
+
+    /** Drops an extra and immediately reconciles the total. */
+    public void removeExtra(ProposalExtra extra) {
+        if (appliedExtras.remove(extra)) {
+            extra.detach();
+            recomputeTotals();
+        }
+    }
+
     /** Moves the proposal through its lifecycle; illegal jumps are rejected. */
     public void transitionTo(ProposalStatus next) {
         if (next == null) {
@@ -139,8 +169,9 @@ public class Proposal {
     }
 
     /**
-     * Single source of truth for the amounts: both are re-derived from the
-     * current lines, so no caller can leave them out of sync with the items.
+     * Single source of truth for the amounts: the subtotal is re-derived from
+     * the current lines and the total adds every recorded extra, so no caller
+     * can leave them out of sync with their inputs.
      */
     private void recomputeTotals() {
         BigDecimal sum = BigDecimal.ZERO;
@@ -148,7 +179,11 @@ public class Proposal {
             sum = sum.add(item.getLineTotal());
         }
         this.subtotal = money(sum);
-        this.total = this.subtotal;
+        BigDecimal extraTotal = BigDecimal.ZERO;
+        for (ProposalExtra extra : appliedExtras) {
+            extraTotal = extraTotal.add(extra.getAmount());
+        }
+        this.total = money(this.subtotal.add(extraTotal));
     }
 
     private static BigDecimal money(BigDecimal value) {
@@ -198,6 +233,11 @@ public class Proposal {
     /** Unmodifiable view: lines are appended through {@link #addItem}. */
     public List<QuotedItem> getItems() {
         return Collections.unmodifiableList(items);
+    }
+
+    /** Unmodifiable view: extras are appended through {@link #addExtra}. */
+    public List<ProposalExtra> getAppliedExtras() {
+        return Collections.unmodifiableList(appliedExtras);
     }
 
     /** Input for one line carried by the Builder until the aggregate exists. */
