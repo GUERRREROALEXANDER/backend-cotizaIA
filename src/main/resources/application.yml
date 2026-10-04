@@ -27,6 +27,10 @@ pricing:
   fixed-risk-buffer: ${PRICING_FIXED_RISK_BUFFER:0.20}
   phased-coordination-overhead: ${PRICING_PHASED_OVERHEAD:0.10}
 
+pipeline:
+  default-hours: ${PIPELINE_DEFAULT_HOURS:8}
+  hours-per-week: ${PIPELINE_HOURS_PER_WEEK:40}
+
 llm:
   provider: ${LLM_PROVIDER:ollama}
   ollama:

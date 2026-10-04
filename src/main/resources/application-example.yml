@@ -38,6 +38,12 @@ pricing:
   # Optional. Coordination overhead for long, phased projects (default 10%).
   phased-coordination-overhead: ${PRICING_PHASED_OVERHEAD:0.10}
 
+pipeline:
+  # Fallback estimate when a catalog requirement has no hours.
+  default-hours: ${PIPELINE_DEFAULT_HOURS:8}
+  # Capacity used to derive sequential phase durations.
+  hours-per-week: ${PIPELINE_HOURS_PER_WEEK:40}
+
 llm:
   # Optional. Which AI provider the LlmClient adapter uses: "ollama", "groq", or "stub" (offline).
   provider: ${LLM_PROVIDER:ollama}
@@ -84,4 +90,6 @@ llm:
 # GROQ_MODEL       Default llama-3.1-8b-instant.
 # PRICING_FIXED_RISK_BUFFER  Default 0.20.
 # PRICING_PHASED_OVERHEAD    Default 0.10.
+# PIPELINE_DEFAULT_HOURS    Default 8 when a catalog estimate is missing.
+# PIPELINE_HOURS_PER_WEEK   Default 40 for sequential phase planning.
 # =============================================================================
