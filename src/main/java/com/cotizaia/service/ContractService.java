@@ -1,12 +1,11 @@
 package com.cotizaia.service;
 
 import com.cotizaia.domain.Contract;
+import com.cotizaia.domain.DefaultContractClauses;
 import com.cotizaia.domain.Proposal;
 import com.cotizaia.domain.ProposalStatus;
 import com.cotizaia.repository.ContractRepository;
 import com.cotizaia.repository.ProposalRepository;
-import java.math.BigDecimal;
-import java.time.Instant;
 import java.util.List;
 import java.util.NoSuchElementException;
 import org.springframework.stereotype.Service;
@@ -14,9 +13,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Application wrapper around the {@link Contract} aggregate (project.txt
- * section 4 payment flow). It keeps repository access out of the domain: the
+ * section 4 acceptance flow). It keeps repository access out of the domain: the
  * aggregate owns the DRAFT -&gt; ISSUED rule, while this service loads the
- * proposal, coordinates the accept-plus-payment use case and persists.
+ * proposal, coordinates the accept-and-issue use case and persists.
  */
 @Service
 public class ContractService {
@@ -45,7 +44,7 @@ public class ContractService {
                 .orElseThrow(() -> new NoSuchElementException("Proposal not found: " + proposalId));
         Contract contract = Contract.draftFor(proposal);
         if (clauses == null || clauses.isEmpty()) {
-            for (String text : DEFAULT_CLAUSES) {
+            for (String text : DefaultContractClauses.DEFAULT_CLAUSES) {
                 contract.addClause(text);
             }
         } else {
@@ -57,20 +56,17 @@ public class ContractService {
     }
 
     /**
-     * Accept-plus-payment use case (acceptance criterion of issue #11):
-     * records the simulated payment on the draft and flips it to ISSUED, and
-     * advances the proposal to CONTRACT_ISSUED, in a single transaction so the
-     * payment record and the issued contract commit or roll back together.
+     * Accept-and-issue use case (acceptance criterion of issue #11): flips the
+     * draft to ISSUED and advances the proposal to CONTRACT_ISSUED in a single
+     * transaction, so both flips commit or roll back together.
      *
      * <p>The proposal's legal move is checked first and the contract validates
-     * the whole payment before mutating anything, so a rejected acceptance
-     * leaves the contract as a clean draft rather than a half-issued one.
-     * (The full simulated-payment aggregate, with its 50% deposit rule, is its
-     * own issue; here the receipt is what the contract needs to be issuable.)
+     * its own DRAFT -&gt; ISSUED move, so a rejected acceptance leaves the
+     * contract as a clean draft rather than a half-issued one. (Payment is its
+     * own aggregate in issue #12 and plays no role here.)
      */
     @Transactional
-    public Contract acceptAndIssue(
-            Long proposalId, String paymentReference, BigDecimal paidAmount, Instant paidAt) {
+    public Contract acceptAndIssue(Long proposalId) {
         Proposal proposal = proposalRepository
                 .findById(proposalId)
                 .orElseThrow(() -> new NoSuchElementException("Proposal not found: " + proposalId));
@@ -86,7 +82,7 @@ public class ContractService {
             throw new IllegalStateException("Proposal cannot be accepted from " + status);
         }
 
-        contract.issue(paymentReference, paidAmount, paidAt);
+        contract.issue();
         if (status != ProposalStatus.ACCEPTED) {
             proposal.transitionTo(ProposalStatus.ACCEPTED);
         }
@@ -107,13 +103,4 @@ public class ContractService {
     /** Input for one clause when generating a draft. */
     public record ClauseSpec(String text) {
     }
-
-    /** Standard commercial clauses used when the pipeline supplies none. */
-    private static final List<String> DEFAULT_CLAUSES = List.of(
-            "Alcance: el proveedor ejecutara unicamente los servicios descritos en la propuesta aceptada.",
-            "Valor y forma de pago: el 50% se paga como anticipo y el 50% restante contra entrega. "
-                    + "Pago simulado con fines academicos, no se procesa dinero real.",
-            "Plazos: el cronograma adjunto es una estimacion; los cambios de alcance pueden ajustarlo.",
-            "Propiedad intelectual: los entregables se transfieren al cliente una vez recibido el pago total.",
-            "Garantia: 30 dias de soporte correctivo sobre los entregables.");
 }

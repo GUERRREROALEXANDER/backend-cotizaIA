@@ -24,8 +24,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Persistence acceptance for issue #11: the {@code contracts} and {@code clauses}
- * tables exist, a draft round-trips unissued, and the accept-plus-payment
- * service flips the contract to ISSUED atomically with the payment record.
+ * tables exist, a draft round-trips unissued, and the accept-and-issue service
+ * flips the contract to ISSUED atomically with the proposal.
  */
 @SpringBootTest
 @ActiveProfiles("test")
@@ -86,7 +86,6 @@ class ContractClausePersistenceTests {
         Contract reloaded = contractRepository.findById(draft.getId()).orElseThrow();
         assertThat(reloaded.getStatus()).isEqualTo(ContractStatus.DRAFT);
         assertThat(reloaded.getIssuedAt()).isNull();
-        assertThat(reloaded.getPaymentReference()).isNull();
         assertThat(reloaded.getClauses()).extracting(Clause::getText)
                 .containsExactly("Alcance del proyecto");
     }
@@ -102,47 +101,41 @@ class ContractClausePersistenceTests {
     }
 
     @Test
-    void acceptPlusPaymentFlipsContractToIssuedAtomically() {
+    void acceptFlipsContractToIssuedAtomically() {
         Proposal proposal = proposalWithStatus("Agencia Emision", ProposalStatus.SENT);
         Contract draft = contractService.generateDraft(proposal.getId(), null);
 
-        Instant paidAt = Instant.parse("2026-02-01T10:00:00Z");
-        contractService.acceptAndIssue(
-                proposal.getId(), "SIM-PAY-777", new BigDecimal("250.00"), paidAt);
+        contractService.acceptAndIssue(proposal.getId());
 
         Contract reloaded = contractRepository.findById(draft.getId()).orElseThrow();
         assertThat(reloaded.getStatus()).isEqualTo(ContractStatus.ISSUED);
         assertThat(reloaded.getIssuedAt()).isNotNull();
-        assertThat(reloaded.getPaymentReference()).isEqualTo("SIM-PAY-777");
-        assertThat(reloaded.getPaidAmount()).isEqualByComparingTo("250.00");
-        assertThat(reloaded.getPaidAt()).isEqualTo(paidAt);
 
-        // The proposal is advanced in the same transaction and the payment
+        // The proposal is advanced in the same transaction and the issue
         // evidence is stored, not only in memory.
         assertThat(proposalRepository.findById(proposal.getId()).orElseThrow().getStatus())
                 .isEqualTo(ProposalStatus.CONTRACT_ISSUED);
-        String storedReference = jdbcTemplate.queryForObject(
-                "SELECT payment_reference FROM contracts WHERE id = ?", String.class, draft.getId());
-        assertThat(storedReference).isEqualTo("SIM-PAY-777");
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT issued_at FROM contracts WHERE id = ?", java.sql.Timestamp.class,
+                draft.getId())).isNotNull();
     }
 
     @Test
-    void rejectedAcceptanceLeavesTheContractDraftWithNoPaymentRecord() {
-        Proposal proposal = proposalWithStatus("Agencia Rechazo", ProposalStatus.SENT);
+    void rejectedAcceptanceLeavesACleanDraft() {
+        Proposal proposal = proposalWithStatus("Agencia Rechazo", ProposalStatus.QUOTED);
         Contract draft = contractService.generateDraft(proposal.getId(), null);
 
-        assertThatThrownBy(() -> contractService.acceptAndIssue(
-                proposal.getId(), "  ", new BigDecimal("250.00"), Instant.now()))
-                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> contractService.acceptAndIssue(proposal.getId()))
+                .isInstanceOf(IllegalStateException.class);
 
         String status = jdbcTemplate.queryForObject(
                 "SELECT status FROM contracts WHERE id = ?", String.class, draft.getId());
-        String reference = jdbcTemplate.queryForObject(
-                "SELECT payment_reference FROM contracts WHERE id = ?", String.class, draft.getId());
+        assertThat(jdbcTemplate.queryForObject(
+                "SELECT issued_at FROM contracts WHERE id = ?", java.sql.Timestamp.class,
+                draft.getId())).isNull();
         assertThat(status).isEqualTo("DRAFT");
-        assertThat(reference).isNull();
         assertThat(proposalRepository.findById(proposal.getId()).orElseThrow().getStatus())
-                .isEqualTo(ProposalStatus.SENT);
+                .isEqualTo(ProposalStatus.QUOTED);
     }
 
     @Test
@@ -156,7 +149,7 @@ class ContractClausePersistenceTests {
     }
 
     @Test
-    void rejectsIssuedStatusWithoutPaymentEvidenceByCheckConstraint() {
+    void rejectsIssuedStatusWithoutIssueEvidenceByCheckConstraint() {
         Proposal proposal = proposalWithStatus("Agencia Check Contrato", ProposalStatus.SENT);
 
         assertThatThrownBy(() -> jdbcTemplate.update(

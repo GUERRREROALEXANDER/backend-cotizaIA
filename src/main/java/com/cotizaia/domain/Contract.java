@@ -14,8 +14,6 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -23,7 +21,8 @@ import java.util.List;
 
 /**
  * Aggregate root for the contract behind a {@link Proposal} (project.txt
- * section 4 payment flow; section 9 schema: Propuesta -> Contrato -> Clausula).
+ * section 4 acceptance flow; section 9 schema: Propuesta -> Contrato ->
+ * Clausula).
  *
  * <p>Design patterns:
  * <ul>
@@ -32,7 +31,7 @@ import java.util.List;
  *       starts it in {@code DRAFT} and sets the owning side of the association.
  *       This is what makes "draft generated with the proposal" the single,
  *       controlled birth path.</li>
- *   <li><b>State</b> - {@link #issue(String, BigDecimal, Instant)} delegates the
+ *   <li><b>State</b> - {@link #issue()} delegates the
  *       legal-transition rules to {@link ContractStatus}, so an already-issued
  *       contract cannot be issued again.</li>
  *   <li><b>Composition</b> - it composes its {@link Clause} children: one save
@@ -40,12 +39,11 @@ import java.util.List;
  *       them too.</li>
  * </ul>
  *
- * <p>A draft carries no issue or payment evidence. The final flip to
- * {@code ISSUED} goes through {@link #issue}, which refuses to run without a
- * simulated payment reference, amount and timestamp, and writes the database's
- * paired {@code ck_contracts_issue} invariant. That is what enforces "final
- * ISSUED only after simulated payment" in the domain and in storage. The
- * accept-plus-payment transaction itself lives in the service layer.
+ * <p>A draft carries no issue evidence. The flip to {@code ISSUED} goes through
+ * {@link #issue}, which writes the database's paired
+ * {@code ck_contracts_issue} invariant. Payment is a later aggregate of its
+ * own (issue #12) and leaves no trace on this row. The accept-plus-issue
+ * transaction itself lives in the service layer.
  */
 @Entity
 @Table(name = "contracts")
@@ -64,19 +62,9 @@ public class Contract {
     @Column(nullable = false, length = 20)
     private ContractStatus status = ContractStatus.DRAFT;
 
-    /** Null while DRAFT; set together with the simulated payment on issue. */
+    /** Null while DRAFT; set on issue. */
     @Column(name = "issued_at")
     private Instant issuedAt;
-
-    /** Simulated payment evidence recorded atomically with the ISSUED flip. */
-    @Column(name = "payment_reference", length = 80)
-    private String paymentReference;
-
-    @Column(name = "paid_amount", precision = 12, scale = 2)
-    private BigDecimal paidAmount;
-
-    @Column(name = "paid_at")
-    private Instant paidAt;
 
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
@@ -94,7 +82,7 @@ public class Contract {
 
     /**
      * Factory method on the aggregate: a draft contract never exists without its
-     * proposal, and it is born unissued so it can be reviewed before payment.
+     * proposal, and it is born unissued so it can be reviewed before acceptance.
      */
     public static Contract draftFor(Proposal proposal) {
         if (proposal == null) {
@@ -129,30 +117,15 @@ public class Contract {
     }
 
     /**
-     * Issues the final contract: records the simulated payment evidence and
-     * flips {@code DRAFT -> ISSUED} in one step. Every payment field is
-     * validated before the status changes, so a rejected issue leaves the draft
-     * exactly as it was (no half-recorded payment, still unissued).
+     * Issues the contract: flips {@code DRAFT -> ISSUED} in one step and
+     * stamps the issue time.
      *
-     * @throws IllegalArgumentException when the payment evidence is incomplete.
-     * @throws IllegalStateException    when the contract is not a draft.
+     * @throws IllegalStateException when the contract is not a draft.
      */
-    public void issue(String paymentReference, BigDecimal paidAmount, Instant paidAt) {
-        if (paymentReference == null || paymentReference.isBlank()) {
-            throw new IllegalArgumentException("payment reference is required to issue the contract");
-        }
-        if (paidAmount == null || paidAmount.signum() < 0) {
-            throw new IllegalArgumentException("paid amount must not be null or negative");
-        }
-        if (paidAt == null) {
-            throw new IllegalArgumentException("paidAt is required to issue the contract");
-        }
+    public void issue() {
         if (!status.canTransitionTo(ContractStatus.ISSUED)) {
             throw new IllegalStateException("Illegal contract transition: " + status + " -> ISSUED");
         }
-        this.paymentReference = paymentReference;
-        this.paidAmount = paidAmount.setScale(2, RoundingMode.HALF_UP);
-        this.paidAt = paidAt;
         this.issuedAt = Instant.now();
         this.status = ContractStatus.ISSUED;
     }
@@ -171,18 +144,6 @@ public class Contract {
 
     public Instant getIssuedAt() {
         return issuedAt;
-    }
-
-    public String getPaymentReference() {
-        return paymentReference;
-    }
-
-    public BigDecimal getPaidAmount() {
-        return paidAmount;
-    }
-
-    public Instant getPaidAt() {
-        return paidAt;
     }
 
     public Instant getCreatedAt() {
