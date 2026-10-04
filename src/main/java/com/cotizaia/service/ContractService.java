@@ -4,6 +4,7 @@ import com.cotizaia.domain.Contract;
 import com.cotizaia.domain.DefaultContractClauses;
 import com.cotizaia.domain.Proposal;
 import com.cotizaia.domain.ProposalStatus;
+import com.cotizaia.domain.ProposalStatusChange;
 import com.cotizaia.repository.ContractRepository;
 import com.cotizaia.repository.ProposalRepository;
 import java.util.List;
@@ -22,10 +23,13 @@ public class ContractService {
 
     private final ContractRepository contractRepository;
     private final ProposalRepository proposalRepository;
+    private final ProposalWorkflowService proposalWorkflowService;
 
-    public ContractService(ContractRepository contractRepository, ProposalRepository proposalRepository) {
+    public ContractService(ContractRepository contractRepository, ProposalRepository proposalRepository,
+            ProposalWorkflowService proposalWorkflowService) {
         this.contractRepository = contractRepository;
         this.proposalRepository = proposalRepository;
+        this.proposalWorkflowService = proposalWorkflowService;
     }
 
     /**
@@ -84,11 +88,14 @@ public class ContractService {
 
         contract.issue();
         if (status != ProposalStatus.ACCEPTED) {
-            proposal.transitionTo(ProposalStatus.ACCEPTED);
+            ProposalStatusChange accepted = proposal.transitionTo(ProposalStatus.ACCEPTED);
+            proposalRepository.saveAndFlush(proposal);
+            proposalWorkflowService.publish(proposal, accepted);
         }
-        proposal.transitionTo(ProposalStatus.CONTRACT_ISSUED);
+        ProposalStatusChange issued = proposal.transitionTo(ProposalStatus.CONTRACT_ISSUED);
 
         proposalRepository.saveAndFlush(proposal);
+        proposalWorkflowService.publish(proposal, issued);
         return contractRepository.saveAndFlush(contract);
     }
 
