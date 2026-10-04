@@ -1,0 +1,6 @@
+-- V1__init.sql
+-- Baseline migration for the CotizaIA backend.
+--
+-- This is a placeholder: it establishes the Flyway migration history so that
+-- subsequent versioned migrations can build the domain schema described in
+-- README.md (Agency, AppUser, Client, Brief, Proposal, ...).

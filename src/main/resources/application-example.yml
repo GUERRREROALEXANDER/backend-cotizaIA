@@ -1,0 +1,67 @@
+# =============================================================================
+# CotizaIA backend - configuration template
+# =============================================================================
+# Copy this file to application-local.yml and fill in the real values:
+#
+#   cp src/main/resources/application-example.yml src/main/resources/application-local.yml
+#
+# application-local.yml is gitignored and MUST NOT be committed.
+# Never commit real credentials, API keys or connection strings.
+# =============================================================================
+
+spring:
+  datasource:
+    # Required. PostgreSQL 16 connection string.
+    # Supabase (production/dev): jdbc:postgresql://<host>.pooler.supabase.com:5432/postgres
+    # Local Postgres:            jdbc:postgresql://localhost:5432/cotizaia
+    url: ${SPRING_DATASOURCE_URL}
+    # Required. Database user. On Supabase use the pooler user, e.g. postgres.<project-ref>.
+    username: ${SPRING_DATASOURCE_USERNAME}
+    # Required. Database password. Set via environment variable, never inline.
+    password: ${SPRING_DATASOURCE_PASSWORD}
+  jpa:
+    open-in-view: false
+    hibernate:
+      # Schema is owned by Flyway; Hibernate only validates the mapping.
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+server:
+  # Optional. Port the HTTP API listens on. Defaults to 8080.
+  port: ${PORT:8080}
+
+llm:
+  # Optional. Which AI provider the LlmClient adapter uses: "ollama" (dev) or "groq" (prod).
+  provider: ${LLM_PROVIDER:ollama}
+  ollama:
+    # Optional. Base URL of the local Ollama server.
+    base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+    # Optional. Model pulled locally, e.g. llama3.1.
+    model: ${OLLAMA_MODEL:llama3.1}
+  groq:
+    # Optional. Groq OpenAI-compatible API base URL.
+    base-url: ${GROQ_BASE_URL:https://api.groq.com/openai/v1}
+    # Required when llm.provider=groq. API key for the Groq free tier.
+    api-key: ${GROQ_API_KEY:}
+    # Optional. Groq model id.
+    model: ${GROQ_MODEL:llama-3.1-8b-instant}
+
+# =============================================================================
+# Required environment variables
+# =============================================================================
+# SPRING_DATASOURCE_URL       PostgreSQL JDBC URL (Supabase pooler or local).
+# SPRING_DATASOURCE_USERNAME  Database user.
+# SPRING_DATASOURCE_PASSWORD  Database password.
+# GROQ_API_KEY                Required only when LLM_PROVIDER=groq.
+#
+# Optional environment variables
+# =============================================================================
+# PORT             HTTP port (default 8080).
+# LLM_PROVIDER     ollama | groq (default ollama).
+# OLLAMA_BASE_URL  Default http://localhost:11434.
+# OLLAMA_MODEL     Default llama3.1.
+# GROQ_BASE_URL    Default https://api.groq.com/openai/v1.
+# GROQ_MODEL       Default llama-3.1-8b-instant.
+# =============================================================================
