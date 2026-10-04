@@ -23,6 +23,10 @@ spring:
 server:
   port: ${PORT:8080}
 
+pricing:
+  fixed-risk-buffer: ${PRICING_FIXED_RISK_BUFFER:0.20}
+  phased-coordination-overhead: ${PRICING_PHASED_OVERHEAD:0.10}
+
 llm:
   provider: ${LLM_PROVIDER:ollama}
   ollama:

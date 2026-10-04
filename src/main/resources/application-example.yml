@@ -32,6 +32,12 @@ server:
   # Optional. Port the HTTP API listens on. Defaults to 8080.
   port: ${PORT:8080}
 
+pricing:
+  # Optional. Scope risk carried by the agency in fixed quotes (default 20%).
+  fixed-risk-buffer: ${PRICING_FIXED_RISK_BUFFER:0.20}
+  # Optional. Coordination overhead for long, phased projects (default 10%).
+  phased-coordination-overhead: ${PRICING_PHASED_OVERHEAD:0.10}
+
 llm:
   # Optional. Which AI provider the LlmClient adapter uses: "ollama" (dev) or "groq" (prod).
   provider: ${LLM_PROVIDER:ollama}
@@ -64,4 +70,6 @@ llm:
 # OLLAMA_MODEL     Default llama3.1.
 # GROQ_BASE_URL    Default https://api.groq.com/openai/v1.
 # GROQ_MODEL       Default llama-3.1-8b-instant.
+# PRICING_FIXED_RISK_BUFFER  Default 0.20.
+# PRICING_PHASED_OVERHEAD    Default 0.10.
 # =============================================================================
