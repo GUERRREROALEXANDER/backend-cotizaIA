@@ -13,14 +13,7 @@ public final class ExtendedWarrantyDecorator extends ProposalPriceDecorator {
     /** Extra kind persisted in {@code proposal_extras.type}. */
     public static final String TYPE = "EXTENDED_WARRANTY";
 
-    /** Default warranty fee when the caller does not set an agency price. */
-    private static final BigDecimal DEFAULT_FEE = new BigDecimal("150.00");
-
     private final BigDecimal fee;
-
-    public ExtendedWarrantyDecorator(PricedProposal delegate) {
-        this(delegate, DEFAULT_FEE);
-    }
 
     public ExtendedWarrantyDecorator(PricedProposal delegate, BigDecimal fee) {
         super(delegate);

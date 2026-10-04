@@ -53,11 +53,12 @@ class ProposalPricingDecoratorTests {
 
     @Test
     void warrantyAddsFlatFee() {
-        ExtendedWarrantyDecorator priced =
-                new ExtendedWarrantyDecorator(new BaseProposalPrice(proposal()));
+        ExtendedWarrantyDecorator priced = new ExtendedWarrantyDecorator(
+                new BaseProposalPrice(proposal()), new BigDecimal("500000.00"));
 
-        assertThat(priced.total()).isEqualByComparingTo("900.00");
-        assertThat(priced.value()).isEqualByComparingTo("150.00");
+        assertThat(priced.total()).isEqualByComparingTo("500750.00");
+        assertThat(priced.subtotal()).isEqualByComparingTo("750.00");
+        assertThat(priced.value()).isEqualByComparingTo("500000.00");
     }
 
     @Test
@@ -78,7 +79,8 @@ class ProposalPricingDecoratorTests {
     @Test
     void stackingKeepsSubtotalUntouched() {
         PricedProposal priced = new ExtendedWarrantyDecorator(
-                new DiscountDecorator(new UrgencyDecorator(new BaseProposalPrice(proposal()))));
+                new DiscountDecorator(new UrgencyDecorator(new BaseProposalPrice(proposal()))),
+                new BigDecimal("500000.00"));
 
         assertThat(priced.subtotal()).isEqualByComparingTo("750.00");
     }
