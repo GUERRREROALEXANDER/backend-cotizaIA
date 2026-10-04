@@ -1,5 +1,7 @@
 package com.cotizaia.agent;
 
+import com.cotizaia.agent.pipeline.PipelineContext;
+import com.cotizaia.agent.pipeline.PipelineHandler;
 import com.cotizaia.domain.AgentExecution;
 import com.cotizaia.domain.Brief;
 import com.cotizaia.domain.StepStatus;
@@ -54,6 +56,40 @@ public class PipelineRunRecorder {
             throw new PipelineFailedException(outcome.executionId(), outcome.failure());
         }
         return new AgentRun(outcome.execution(), outcome.result());
+    }
+
+    /**
+     * Runs linked handlers through the same commit-before-rethrow skeleton as {@link #run}.
+     * A deliberate HALT is successful because it produces clarification questions rather than a technical failure.
+     */
+    public AgentRun runChain(Brief brief, PipelineHandler head, PipelineContext context) {
+        RunOutcome outcome = transactionTemplate.execute(status -> executeChain(brief, head, context));
+        if (outcome.failure() != null) {
+            throw new PipelineFailedException(outcome.executionId(), outcome.failure());
+        }
+        return new AgentRun(outcome.execution(), context);
+    }
+
+    private RunOutcome executeChain(Brief brief, PipelineHandler head, PipelineContext context) {
+        AgentExecution execution = new AgentExecution(brief, Instant.now());
+        agentExecutionRepository.saveAndFlush(execution);
+        try {
+            head.handle(context, (handler, input, output, duration, stepStatus) -> {
+                execution.addStep(handler, summarize(input), summarize(output), duration, stepStatus);
+                agentExecutionRepository.saveAndFlush(execution);
+            });
+            execution.succeed(Instant.now());
+            agentExecutionRepository.saveAndFlush(execution);
+            return new RunOutcome(execution, context, null);
+        } catch (RuntimeException failure) {
+            String handler = context.getCurrentHandler() == null ? "pipeline" : context.getCurrentHandler();
+            execution.addStep(handler, null, summarize(failure.getMessage()), null, StepStatus.FAILED);
+            String message = failure.getMessage();
+            execution.fail(summarize(message == null || message.isBlank() ? failure.toString() : message),
+                    Instant.now());
+            agentExecutionRepository.saveAndFlush(execution);
+            return new RunOutcome(execution, context, failure);
+        }
     }
 
     private RunOutcome executeWithinTransaction(Brief brief, List<PipelineStep> steps) {
