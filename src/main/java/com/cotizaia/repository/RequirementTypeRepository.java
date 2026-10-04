@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface RequirementTypeRepository extends JpaRepository<RequirementType, Long> {
 
+    List<RequirementType> findByServiceCatalogAgencyIdOrderByIdAsc(Long agencyId);
+
     List<RequirementType> findByServiceCatalogIdOrderByIdAsc(Long serviceCatalogId);
 
     List<RequirementType> findByServiceCatalogAgencyIdAndServiceCatalogIdOrderByIdAsc(
