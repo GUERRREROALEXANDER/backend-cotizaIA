@@ -1,5 +1,9 @@
 package com.cotizaia.domain;
 
+import com.cotizaia.domain.state.InvalidStateTransitionException;
+import com.cotizaia.domain.state.ProposalEvent;
+import com.cotizaia.domain.state.ProposalState;
+import com.cotizaia.domain.state.ProposalStates;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -13,6 +17,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OneToOne;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
@@ -34,9 +39,9 @@ import java.util.List;
  *       only way in is {@link Proposal.Builder}, which validates the required
  *       brief at {@link Builder#build()}. There is no public or telescoping
  *       constructor.</li>
- *   <li><b>State</b> - {@link #transitionTo(ProposalStatus)} delegates the
- *       legal-transition rules to {@link ProposalStatus}, so an illegal jump is
- *       rejected in the domain.</li>
+ *   <li><b>State</b> - Context {@code Proposal} delegates events to State
+ *       {@link ProposalState}; ConcreteStates in {@code domain.state} own the
+ *       legal transitions and reject illegal jumps.</li>
  * </ul>
  *
  * <p>It composes its {@link QuotedItem} children and its structured
@@ -94,6 +99,10 @@ public class Proposal {
 
     @OneToMany(mappedBy = "proposal", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProposalExtra> appliedExtras = new ArrayList<>();
+
+    @OneToMany(mappedBy = "proposal", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("id ASC")
+    private List<ProposalStatusChange> statusHistory = new ArrayList<>();
 
     /**
      * The proposal's smart schedule (project.txt section 5, section 9 schema:
@@ -224,14 +233,34 @@ public class Proposal {
     }
 
     /** Moves the proposal through its lifecycle; illegal jumps are rejected. */
-    public void transitionTo(ProposalStatus next) {
+    public ProposalStatusChange transitionTo(ProposalStatus next) {
         if (next == null) {
             throw new IllegalArgumentException("next status must not be null");
         }
-        if (!status.canTransitionTo(next)) {
-            throw new IllegalStateException("Illegal proposal transition: " + status + " -> " + next);
+        if (next == ProposalStatus.RECEIVED) {
+            throw new InvalidStateTransitionException(status, null, next, getState().allowedTransitions());
         }
-        this.status = next;
+        return apply(ProposalEvent.leadingTo(next));
+    }
+
+    /** Delegates an event to the current State and records the accepted transition in the audit trail. */
+    public ProposalStatusChange apply(ProposalEvent event) {
+        ProposalStatus from = status;
+        ProposalState next = getState().handle(event);
+        status = next.status();
+        ProposalStatusChange change = new ProposalStatusChange(this, from, status, Instant.now());
+        statusHistory.add(change);
+        return change;
+    }
+
+    /** Resolves the State that owns lifecycle rules for the persisted status. */
+    public ProposalState getState() {
+        return ProposalStates.of(status);
+    }
+
+    /** Returns the read-only audit trail of transitions accepted by the State. */
+    public List<ProposalStatusChange> getStatusHistory() {
+        return Collections.unmodifiableList(statusHistory);
     }
 
     /**
