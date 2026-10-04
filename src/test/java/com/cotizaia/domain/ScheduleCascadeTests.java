@@ -98,6 +98,25 @@ class ScheduleCascadeTests {
     }
 
     @Test
+    void rejectsAPhaseWhoseShareWouldExceedTheTotalProjectHours() {
+        Proposal proposal = proposalQuoting("60", "60");
+        Schedule schedule = proposal.attachSchedule(new BigDecimal("40"));
+        schedule.addPhase("Design UX", new BigDecimal("0.6000"));
+
+        // 0.6 + 0.4 hits exactly 1 and is accepted.
+        schedule.addPhase("Development", new BigDecimal("0.4000"));
+        assertThat(schedule.getPhases()).hasSize(2);
+
+        // A third phase would push the total over 1: rejected, and the
+        // schedule keeps only the two phases already accepted.
+        assertThatThrownBy(() -> schedule.addPhase("QA + launch", new BigDecimal("0.1000")))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("exceeding");
+        assertThat(schedule.getPhases()).hasSize(2).extracting(Phase::getName)
+                .containsExactly("Design UX", "Development");
+    }
+
+    @Test
     void returnsNoPublicConstructorSoOnlyTheFactoryCanCreateASchedule() {
         assertThat(Schedule.class.getConstructors()).isEmpty();
     }

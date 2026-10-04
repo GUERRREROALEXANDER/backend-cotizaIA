@@ -102,9 +102,21 @@ public class Schedule {
     /**
      * Appends a phase with its share of the project hours and immediately
      * re-places the whole timeline, so the schedule is never momentarily
-     * inconsistent with its phases.
+     * inconsistent with its phases. Phases may not consume more than the whole
+     * project: a share that would push the sum of shares past 1 is rejected
+     * before anything is written, so a rejected add leaves the schedule untouched.
      */
     public Phase addPhase(String name, BigDecimal hoursShare) {
+        BigDecimal totalShare = hoursShare == null ? BigDecimal.ZERO : hoursShare;
+        for (Phase phase : phases) {
+            totalShare = totalShare.add(phase.getHoursShare());
+        }
+        if (totalShare.compareTo(BigDecimal.ONE) > 0) {
+            throw new IllegalStateException(
+                    "Phases must not consume more than the project hours: adding \""
+                            + name + "\" would raise the total share to " + totalShare
+                            + ", exceeding 1");
+        }
         Phase phase = new Phase(this, name, hoursShare, phases.size());
         phases.add(phase);
         recalculate();
