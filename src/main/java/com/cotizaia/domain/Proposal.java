@@ -4,6 +4,7 @@ import com.cotizaia.domain.state.InvalidStateTransitionException;
 import com.cotizaia.domain.state.ProposalEvent;
 import com.cotizaia.domain.state.ProposalState;
 import com.cotizaia.domain.state.ProposalStates;
+import com.cotizaia.pricing.PricingModel;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -73,6 +74,10 @@ public class Proposal {
     @Column(nullable = false, length = 20)
     private ProposalStatus status;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "pricing_model", length = 20)
+    private PricingModel pricingModel;
+
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal subtotal;
 
@@ -118,6 +123,7 @@ public class Proposal {
     private Proposal(Builder builder) {
         this.brief = builder.brief;
         this.status = builder.status;
+        this.pricingModel = builder.pricingModel;
         this.validUntil = builder.validUntil;
         this.terms = builder.terms;
         this.schedule = builder.schedule;
@@ -297,6 +303,18 @@ public class Proposal {
         return status;
     }
 
+    public PricingModel getPricingModel() {
+        return pricingModel;
+    }
+
+    /** Records the strategy used for this quote before human approval. */
+    public void applyPricingModel(PricingModel model) {
+        if (model == null) {
+            throw new IllegalArgumentException("pricingModel must not be null");
+        }
+        this.pricingModel = model;
+    }
+
     public BigDecimal getSubtotal() {
         return subtotal;
     }
@@ -349,6 +367,7 @@ public class Proposal {
         private final List<ItemSpec> itemSpecs = new ArrayList<>();
         private Brief brief;
         private ProposalStatus status = ProposalStatus.RECEIVED;
+        private PricingModel pricingModel;
         private Instant validUntil;
         private String terms;
         private String schedule;
@@ -361,6 +380,11 @@ public class Proposal {
 
         public Builder status(ProposalStatus status) {
             this.status = status;
+            return this;
+        }
+
+        public Builder pricingModel(PricingModel pricingModel) {
+            this.pricingModel = pricingModel;
             return this;
         }
 
