@@ -40,4 +40,21 @@ class FlywayMigrationTests {
             assertThat(count).as("table %s exists", table).isEqualTo(1);
         }
     }
+
+    @Test
+    void v4CreatesRateAndRoleTables() {
+        Integer applied = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM flyway_schema_history WHERE version = '4' AND success = TRUE",
+                Integer.class);
+
+        assertThat(applied).isEqualTo(1);
+        for (String table : new String[] {"roles", "rates"}) {
+            Integer count = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM information_schema.tables"
+                            + " WHERE LOWER(table_name) = LOWER(?) AND LOWER(table_schema) = 'public'",
+                    Integer.class,
+                    table);
+            assertThat(count).as("table %s exists", table).isEqualTo(1);
+        }
+    }
 }
