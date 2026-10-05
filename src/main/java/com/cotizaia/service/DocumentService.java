@@ -66,6 +66,23 @@ public class DocumentService {
     }
 
     @Transactional(readOnly = true)
+    public ProposalDocument get(Long agencyId, Long proposalId, DocumentType type) {
+        requireAgencyProposal(agencyId, proposalId);
+        return get(proposalId, type);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProposalDocument> list(Long agencyId, Long proposalId) {
+        requireAgencyProposal(agencyId, proposalId);
+        return list(proposalId);
+    }
+
+    private void requireAgencyProposal(Long agencyId, Long proposalId) {
+        proposals.findByIdAndBriefClientAgencyId(proposalId, agencyId)
+                .orElseThrow(() -> new NoSuchElementException("Proposal not found: " + proposalId));
+    }
+
+    @Transactional(readOnly = true)
     public ProposalDocument get(Long proposalId, DocumentType type) {
         return documents.findByProposalIdAndType(proposalId, type)
                 .orElseThrow(() -> new NoSuchElementException("Document not found: " + proposalId + "/" + type));
