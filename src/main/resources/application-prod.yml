@@ -1,0 +1,37 @@
+# =============================================================================
+# CotizaIA backend - production profile (Render web service + Supabase Postgres)
+# =============================================================================
+# Activated with SPRING_PROFILES_ACTIVE=prod (set in the Dockerfile and render.yaml).
+# Every secret comes from the environment; nothing here is a credential.
+# REQUIRED in prod: SPRING_DATASOURCE_URL, SPRING_DATASOURCE_USERNAME,
+# SPRING_DATASOURCE_PASSWORD, JWT_SECRET, CORS_ALLOWED_ORIGINS, GROQ_API_KEY.
+# =============================================================================
+
+spring:
+  datasource:
+    # No defaults on purpose: a missing variable fails fast at startup instead of
+    # silently pointing at a local database.
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    hikari:
+      # Supabase's free pooler accepts few connections; keep the pool small.
+      maximum-pool-size: ${DB_POOL_SIZE:5}
+      minimum-idle: 1
+      connection-timeout: 30000
+
+server:
+  # Render terminates TLS at its proxy and forwards X-Forwarded-* headers.
+  forward-headers-strategy: framework
+  shutdown: graceful
+
+llm:
+  provider: ${LLM_PROVIDER:groq}
+
+springdoc:
+  swagger-ui:
+    enabled: ${SWAGGER_ENABLED:true}
+
+logging:
+  level:
+    root: INFO
