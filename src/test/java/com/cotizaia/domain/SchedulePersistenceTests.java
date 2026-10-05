@@ -144,13 +144,17 @@ class SchedulePersistenceTests {
                 schedule.getPhases().get(1).getId(),
                 schedule.getPhases().get(0).getId());
         Long scheduleId = schedule.getId();
+        Long dependentPhaseId = schedule.getPhases().get(1).getId();
+        Long prerequisitePhaseId = schedule.getPhases().get(0).getId();
 
         jdbcTemplate.update("DELETE FROM schedules WHERE id = ?", scheduleId);
 
         Integer phases = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM phases WHERE schedule_id = ?", Integer.class, scheduleId);
+        // Scoped to this schedule's phases: other tests (e.g. the HTTP end-to-end flow) commit their own schedules.
         Integer edges = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM phase_dependencies", Integer.class);
+                "SELECT COUNT(*) FROM phase_dependencies WHERE phase_id IN (?, ?) OR depends_on_phase_id IN (?, ?)",
+                Integer.class, dependentPhaseId, prerequisitePhaseId, dependentPhaseId, prerequisitePhaseId);
         assertThat(phases).isZero();
         assertThat(edges).isZero();
     }
