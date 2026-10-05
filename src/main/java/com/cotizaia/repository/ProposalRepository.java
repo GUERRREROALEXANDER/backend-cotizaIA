@@ -1,6 +1,7 @@
 package com.cotizaia.repository;
 
 import com.cotizaia.domain.Proposal;
+import com.cotizaia.domain.ProposalStatus;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -16,4 +17,10 @@ public interface ProposalRepository extends JpaRepository<Proposal, Long> {
     Optional<Proposal> findByIdAndBriefClientAgencyId(Long id, Long agencyId);
 
     long countByBriefId(Long briefId);
+
+    List<Proposal> findByStatusAndBriefClientAgencyIdOrderByCreatedAtAsc(ProposalStatus status, Long agencyId);
+
+    List<Proposal> findByBriefClientAgencyIdOrderByCreatedAtDesc(Long agencyId);
+
+    List<Proposal> findByBriefIdOrderByIdDesc(Long briefId);
 }
