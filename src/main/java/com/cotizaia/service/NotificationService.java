@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,5 +45,14 @@ public class NotificationService {
     @Transactional(readOnly = true)
     public List<Notification> listForAgency(Long agencyId) {
         return repository.findByAgencyIdOrderBySentAtDescIdDesc(agencyId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Notification> dashboard(Long agencyId, int limit) {
+        if (limit < 1 || limit > 200) {
+            throw new IllegalArgumentException("limit must be between 1 and 200");
+        }
+        return repository.findByAgencyIdAndChannelOrderBySentAtDescIdDesc(
+                agencyId, "DASHBOARD", PageRequest.of(0, limit));
     }
 }

@@ -2,6 +2,7 @@ package com.cotizaia.api;
 
 import com.cotizaia.domain.AgentExecution;
 import com.cotizaia.domain.ExecutionStatus;
+import com.cotizaia.service.AgentExecutionService.Timeline;
 import java.time.Instant;
 import java.util.List;
 
@@ -18,6 +19,10 @@ public record AgentExecutionResponse(
         Instant finishedAt,
         String errorMessage,
         List<AgentStepResponse> steps) {
+
+    public static AgentExecutionResponse from(Timeline timeline) {
+        return from(timeline.execution(), timeline.steps().stream().map(AgentStepResponse::from).toList());
+    }
 
     public static AgentExecutionResponse from(AgentExecution execution, List<AgentStepResponse> steps) {
         return new AgentExecutionResponse(
