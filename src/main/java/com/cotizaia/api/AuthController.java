@@ -1,6 +1,8 @@
 package com.cotizaia.api;
 
 import com.cotizaia.service.AuthService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/auth")
+@Tag(name = "Authentication")
 public class AuthController {
 
     private final AuthService authService;
@@ -25,6 +28,7 @@ public class AuthController {
     }
 
     @PostMapping("/register")
+    @Operation(summary = "Register an agency and owner")
     @ResponseStatus(HttpStatus.CREATED)
     public AuthResponse register(@Valid @RequestBody RegisterRequest request) {
         return AuthResponse.from(authService.register(request.agencyName(), request.ownerFullName(),
@@ -32,11 +36,13 @@ public class AuthController {
     }
 
     @PostMapping("/login")
+    @Operation(summary = "Authenticate with credentials")
     public AuthResponse login(@Valid @RequestBody LoginRequest request) {
         return AuthResponse.from(authService.login(request.email(), request.password()));
     }
 
     @GetMapping("/me")
+    @Operation(summary = "Get the authenticated identity")
     public CurrentUser me(CurrentUser user) {
         return user;
     }
