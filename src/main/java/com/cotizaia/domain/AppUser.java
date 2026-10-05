@@ -15,6 +15,7 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
+import java.util.Locale;
 
 /**
  * Owner or staff member of an {@link Agency}. The owner_flag discriminator is
@@ -26,7 +27,8 @@ import java.time.Instant;
         name = "users",
         uniqueConstraints = {
                 @UniqueConstraint(name = "uq_users_agency_email", columnNames = {"agency_id", "email"}),
-                @UniqueConstraint(name = "uq_users_agency_owner", columnNames = {"agency_id", "owner_flag"})
+                @UniqueConstraint(name = "uq_users_agency_owner", columnNames = {"agency_id", "owner_flag"}),
+                @UniqueConstraint(name = "uq_users_login_email", columnNames = "login_email")
         })
 public class AppUser {
 
@@ -47,6 +49,12 @@ public class AppUser {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private UserRole role;
+
+    @Column(name = "login_email", length = 255)
+    private String loginEmail;
+
+    @Column(name = "password_hash", length = 100)
+    private String passwordHash;
 
     @Column(name = "owner_flag")
     private Boolean ownerFlag;
@@ -71,6 +79,26 @@ public class AppUser {
         if (createdAt == null) {
             createdAt = Instant.now();
         }
+    }
+
+    public void assignCredentials(String loginEmail, String passwordHash) {
+        if (loginEmail == null || loginEmail.isBlank() || passwordHash == null || passwordHash.isBlank()) {
+            throw new IllegalArgumentException("Login email and password hash are required");
+        }
+        this.loginEmail = loginEmail.trim().toLowerCase(Locale.ROOT);
+        this.passwordHash = passwordHash;
+    }
+
+    public String getLoginEmail() {
+        return loginEmail;
+    }
+
+    public String getPasswordHash() {
+        return passwordHash;
+    }
+
+    public boolean hasCredentials() {
+        return loginEmail != null && passwordHash != null;
     }
 
     public Long getId() {
