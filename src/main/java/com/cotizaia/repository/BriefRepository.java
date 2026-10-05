@@ -3,6 +3,7 @@ package com.cotizaia.repository;
 import com.cotizaia.domain.Brief;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
@@ -16,4 +17,7 @@ public interface BriefRepository extends JpaRepository<Brief, Long> {
     long countByClientId(Long clientId);
 
     Optional<Brief> findByIdAndClientAgencyId(Long id, Long agencyId);
+
+    @EntityGraph(attributePaths = {"client", "client.agency"})
+    Optional<Brief> findWithClientById(Long id);
 }
