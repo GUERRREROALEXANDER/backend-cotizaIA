@@ -13,3 +13,7 @@ application-local.yml
 .vscode/
 *.swp
 .DS_Store
+
+# Local agent tooling
+.claude/
+.codex/

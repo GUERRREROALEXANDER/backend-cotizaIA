@@ -1,0 +1,25 @@
+# LOCAL DEVELOPMENT ONLY. These credentials match the defaults in application.yml
+# and are not secrets; production uses Supabase through environment variables.
+#
+#   docker compose up -d        # start Postgres on localhost:5432
+#   ./mvnw spring-boot:run      # Flyway creates the schema on startup
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: cotizaia
+      POSTGRES_USER: cotizaia
+      POSTGRES_PASSWORD: cotizaia
+    ports:
+      - "5432:5432"
+    volumes:
+      - cotizaia-data:/var/lib/postgresql/data
+
+  # Optional local LLM. Uncomment, then: docker compose exec ollama ollama pull llama3.1
+  # ollama:
+  #   image: ollama/ollama
+  #   ports:
+  #     - "11434:11434"
+
+volumes:
+  cotizaia-data:
