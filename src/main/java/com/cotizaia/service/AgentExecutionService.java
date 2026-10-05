@@ -29,6 +29,12 @@ public class AgentExecutionService {
     }
 
     @Transactional(readOnly = true)
+    public AgentExecution get(Long agencyId, Long id) {
+        return agentExecutionRepository.findByIdAndBriefClientAgencyId(id, agencyId)
+                .orElseThrow(() -> new NoSuchElementException("Agent execution not found: " + id));
+    }
+
+    @Transactional(readOnly = true)
     public AgentExecution get(Long id) {
         return agentExecutionRepository
                 .findById(id)

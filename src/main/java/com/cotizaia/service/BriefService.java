@@ -58,6 +58,23 @@ public class BriefService {
                 .findById(clientId)
                 .orElseThrow(() -> new NoSuchElementException("Client not found: " + clientId));
 
+        return ingest(client, channel, payload);
+    }
+
+    @Transactional
+    public Brief ingest(Long agencyId, BriefChannel channel, Long clientId, Map<String, Object> payload) {
+        Client client = clientRepository.findByIdAndAgencyId(clientId, agencyId)
+                .orElseThrow(() -> new NoSuchElementException("Client not found: " + clientId));
+        return ingest(client, channel, payload);
+    }
+
+    @Transactional(readOnly = true)
+    public Brief get(Long agencyId, Long id) {
+        return briefRepository.findByIdAndClientAgencyId(id, agencyId)
+                .orElseThrow(() -> new NoSuchElementException("Brief not found: " + id));
+    }
+
+    private Brief ingest(Client client, BriefChannel channel, Map<String, Object> payload) {
         BriefSource source = briefSourceRegistry.forChannel(channel);
         NormalizedBrief normalized = source.normalize(payload);
 

@@ -1,5 +1,6 @@
 package com.cotizaia.api;
 
+import static com.cotizaia.api.TestTokens.forAgency;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -43,12 +44,40 @@ class BriefControllerTests {
 
     private Long clientId;
 
+    private Long agencyId;
+
     @BeforeEach
     void createClient() {
         Agency agency = agencyRepository.saveAndFlush(new Agency("Agencia API Brief"));
+        agencyId = agency.getId();
         Client client = clientRepository.saveAndFlush(
                 new Client(agency, "Restaurante El Sabor", "contacto@elsabor.co"));
         clientId = client.getId();
+    }
+
+    @Test
+    void rejectsUnauthenticatedRequests() throws Exception {
+        mockMvc.perform(get("/api/briefs/1"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("Authentication required"));
+        mockMvc.perform(post("/api/briefs").contentType(MediaType.APPLICATION_JSON)
+                        .content(body("EMAIL", "{\"body\":\"Hello\"}")))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void hidesOtherAgencyBriefsAndClients() throws Exception {
+        MvcResult created = mockMvc.perform(post("/api/briefs").with(forAgency(agencyId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body("EMAIL", "{\"body\":\"Hello\"}")))
+                .andExpect(status().isCreated()).andReturn();
+        Long otherAgencyId = agencyRepository.saveAndFlush(new Agency("Other agency")).getId();
+        mockMvc.perform(get("/api/briefs/{id}", extractId(created)).with(forAgency(otherAgencyId)))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(post("/api/briefs").with(forAgency(otherAgencyId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body("EMAIL", "{\"body\":\"Hello\"}")))
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -72,7 +101,7 @@ class BriefControllerTests {
         String payload = "{\"subject\":\"Cotizacion\",\"from\":\"cliente@elsabor.co\","
                 + "\"body\":\"Hola\"}";
 
-        MvcResult created = mockMvc.perform(post("/api/briefs")
+        MvcResult created = mockMvc.perform(post("/api/briefs").with(forAgency(agencyId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body("EMAIL", payload)))
                 .andExpect(status().isCreated())
@@ -81,7 +110,7 @@ class BriefControllerTests {
 
         Long id = extractId(created);
 
-        mockMvc.perform(get("/api/briefs/{id}", id))
+        mockMvc.perform(get("/api/briefs/{id}", id).with(forAgency(agencyId)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.source").value("EMAIL"))
                 .andExpect(jsonPath("$.rawText").value("Hola"))
@@ -90,7 +119,7 @@ class BriefControllerTests {
 
     @Test
     void rejectsUnknownClientWithNotFound() throws Exception {
-        mockMvc.perform(post("/api/briefs")
+        mockMvc.perform(post("/api/briefs").with(forAgency(agencyId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"source\":\"EMAIL\",\"clientId\":-1,\"payload\":{\"body\":\"x\"}}"))
                 .andExpect(status().isNotFound());
@@ -98,7 +127,7 @@ class BriefControllerTests {
 
     @Test
     void rejectsPayloadMissingRequiredFieldWithBadRequest() throws Exception {
-        mockMvc.perform(post("/api/briefs")
+        mockMvc.perform(post("/api/briefs").with(forAgency(agencyId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body("WHATSAPP", "{\"from\":\"+57\"}")))
                 .andExpect(status().isBadRequest())
@@ -107,7 +136,7 @@ class BriefControllerTests {
 
     @Test
     void rejectsUnknownSourceWithBadRequest() throws Exception {
-        mockMvc.perform(post("/api/briefs")
+        mockMvc.perform(post("/api/briefs").with(forAgency(agencyId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"source\":\"SMOKE_SIGNAL\",\"clientId\":" + clientId
                                 + ",\"payload\":{\"body\":\"x\"}}"))
@@ -120,7 +149,7 @@ class BriefControllerTests {
     }
 
     private String postAndReadRawText(String json) throws Exception {
-        MvcResult result = mockMvc.perform(post("/api/briefs")
+        MvcResult result = mockMvc.perform(post("/api/briefs").with(forAgency(agencyId))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
                 .andExpect(status().isCreated())

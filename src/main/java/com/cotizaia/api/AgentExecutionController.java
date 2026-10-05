@@ -24,8 +24,8 @@ public class AgentExecutionController {
     }
 
     @GetMapping("/{id}")
-    public AgentExecutionResponse get(@PathVariable Long id) {
-        AgentExecution execution = agentExecutionService.get(id);
+    public AgentExecutionResponse get(@PathVariable Long id, CurrentUser user) {
+        AgentExecution execution = agentExecutionService.get(user.agencyId(), id);
         List<AgentStepResponse> steps = agentExecutionService.timeline(id).stream()
                 .map(AgentStepResponse::from)
                 .toList();

@@ -28,13 +28,13 @@ public class BriefController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public BriefResponse ingest(@Valid @RequestBody BriefIngestRequest request) {
-        Brief brief = briefService.ingest(request.source(), request.clientId(), request.payload());
+    public BriefResponse ingest(@Valid @RequestBody BriefIngestRequest request, CurrentUser user) {
+        Brief brief = briefService.ingest(user.agencyId(), request.source(), request.clientId(), request.payload());
         return BriefResponse.from(brief);
     }
 
     @GetMapping("/{id}")
-    public BriefResponse get(@PathVariable Long id) {
-        return BriefResponse.from(briefService.get(id));
+    public BriefResponse get(@PathVariable Long id, CurrentUser user) {
+        return BriefResponse.from(briefService.get(user.agencyId(), id));
     }
 }
