@@ -13,3 +13,7 @@ spring:
     locations: classpath:db/migration
 llm:
   provider: stub
+
+security:
+  jwt:
+    secret: cotizaia-test-only-secret-never-use-in-production

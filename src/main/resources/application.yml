@@ -47,3 +47,13 @@ llm:
     max-attempts: ${LLM_RETRY_MAX_ATTEMPTS:3}
     initial-backoff: ${LLM_RETRY_INITIAL_BACKOFF:500ms}
     multiplier: ${LLM_RETRY_MULTIPLIER:2.0}
+
+security:
+  jwt:
+    secret: ${JWT_SECRET:}
+    ttl: ${JWT_TTL:PT8H}
+    issuer: cotizaia
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}

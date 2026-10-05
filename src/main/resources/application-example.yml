@@ -93,3 +93,17 @@ llm:
 # PIPELINE_DEFAULT_HOURS    Default 8 when a catalog estimate is missing.
 # PIPELINE_HOURS_PER_WEEK   Default 40 for sequential phase planning.
 # =============================================================================
+
+# JWT_SECRET: at least 32 UTF-8 bytes; set in production for persistent tokens.
+# JWT_TTL: token lifetime (default PT8H).
+# CORS_ALLOWED_ORIGINS: comma-separated frontend origins.
+
+security:
+  jwt:
+    secret: ${JWT_SECRET:}
+    ttl: ${JWT_TTL:PT8H}
+    issuer: cotizaia
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
