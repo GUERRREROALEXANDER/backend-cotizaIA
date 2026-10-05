@@ -1,10 +1,12 @@
 package com.cotizaia.api;
 
+import com.cotizaia.agent.PipelineRunRecorder.PipelineFailedException;
 import com.cotizaia.domain.state.InvalidStateTransitionException;
 import com.cotizaia.ingest.UnsupportedChannelException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -26,10 +28,18 @@ public class ApiExceptionHandler {
         return Map.of("error", exception.getMessage());
     }
 
-    @ExceptionHandler(IllegalStateException.class)
+    @ExceptionHandler({IllegalStateException.class, DataIntegrityViolationException.class})
     @ResponseStatus(HttpStatus.CONFLICT)
-    public Map<String, String> conflict(IllegalStateException exception) {
-        return Map.of("error", String.valueOf(exception.getMessage()));
+    public Map<String, String> conflict(RuntimeException exception) {
+        String message = exception instanceof DataIntegrityViolationException
+                ? "Operation conflicts with existing data" : String.valueOf(exception.getMessage());
+        return Map.of("error", message);
+    }
+
+    @ExceptionHandler(PipelineFailedException.class)
+    @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+    public Map<String, Object> pipelineFailed(PipelineFailedException exception) {
+        return Map.of("error", exception.getMessage(), "executionId", exception.getExecutionId());
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
