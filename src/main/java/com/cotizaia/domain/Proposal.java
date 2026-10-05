@@ -99,6 +99,9 @@ public class Proposal {
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
+    @Column(name = "approved_at")
+    private Instant approvedAt;
+
     @OneToMany(mappedBy = "proposal", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<QuotedItem> items = new ArrayList<>();
 
@@ -212,6 +215,7 @@ public class Proposal {
         QuotedItem edited = new QuotedItem(this, item.getRequirement(), newHours, item.getUnitPrice());
         items.set(index, edited);
         item.detach();
+        clearApproval();
         recomputeTotals();
         // Cascade: the schedule derives from hours, so it must follow the edit.
         if (schedulePlan != null) {
@@ -236,6 +240,47 @@ public class Proposal {
 
     public Schedule getSchedulePlan() {
         return schedulePlan;
+    }
+
+    /** Removes the previous quote before replacement and invalidates human approval. */
+    public void clearQuote() {
+        for (QuotedItem item : items) {
+            item.detach();
+        }
+        items.clear();
+        for (ProposalExtra extra : appliedExtras) {
+            extra.detach();
+        }
+        appliedExtras.clear();
+        clearApproval();
+        recomputeTotals();
+        if (schedulePlan != null) {
+            schedulePlan.detach();
+            schedulePlan = null;
+        }
+    }
+
+    /** Records human approval only while the proposal is awaiting review. */
+    public void approve(Instant at) {
+        if (status != ProposalStatus.IN_REVIEW) {
+            throw new IllegalStateException("Proposal can only be approved in IN_REVIEW");
+        }
+        if (at == null) {
+            throw new IllegalArgumentException("approvedAt is required");
+        }
+        approvedAt = at;
+    }
+
+    public void clearApproval() {
+        approvedAt = null;
+    }
+
+    public boolean isApproved() {
+        return approvedAt != null;
+    }
+
+    public Instant getApprovedAt() {
+        return approvedAt;
     }
 
     /** Moves the proposal through its lifecycle; illegal jumps are rejected. */
