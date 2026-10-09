@@ -77,7 +77,7 @@ public class LlmProperties {
     public static class Groq {
         private String baseUrl = "https://api.groq.com/openai/v1";
         private String apiKey = "";
-        private String model = "llama-3.1-8b-instant";
+        private String model = "openai/gpt-oss-20b";
 
         public String getBaseUrl() {
             return baseUrl;
