@@ -1,4 +1,4 @@
-# Render Blueprint: one free web service built from the Dockerfile.
+# Render Blueprint: the Docker backend from this repo plus the Vite frontend as a static site.
 # Secrets use `sync: false`, so Render asks for them in the dashboard and they never live in git.
 services:
   - type: web
@@ -23,5 +23,21 @@ services:
         sync: false
       - key: JWT_SECRET
         sync: false
+      # Frontend URL, e.g. https://cotizaia-frontend.onrender.com (no trailing slash).
       - key: CORS_ALLOWED_ORIGINS
+        sync: false
+
+  # Static sites are free and don't sleep. VITE_API_URL is read at build time,
+  # so redeploy the frontend after changing it.
+  - type: web
+    name: cotizaia-frontend
+    runtime: static
+    repo: https://github.com/GUERRREROALEXANDER/frontend-cotizaIA
+    branch: main
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./dist
+    autoDeploy: true
+    envVars:
+      # Backend URL, e.g. https://cotizaia-backend.onrender.com (no trailing slash).
+      - key: VITE_API_URL
         sync: false
