@@ -18,6 +18,6 @@ public class WhatsappBriefAdapter implements BriefSource {
 
     @Override
     public NormalizedBrief normalize(Map<String, Object> payload) {
-        return new NormalizedBrief(PayloadSupport.requireText(payload, "message"));
+        return new NormalizedBrief(PayloadSupport.requireText(payload, "message", PayloadSupport.MAX_TYPED_TEXT_CHARS));
     }
 }

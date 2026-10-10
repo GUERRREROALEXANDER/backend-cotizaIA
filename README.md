@@ -12,7 +12,7 @@ This repo is **backend + DB only**. Frontend lives elsewhere (see [Connecting a 
 |---|---|
 | Language / framework | Java 17 + Spring Boot 3.3 (Maven) |
 | Database | PostgreSQL 16 on **Supabase** (free tier, permanent); H2 in tests |
-| Migrations | Flyway (`V1`…`V19`), Hibernate only validates |
+| Migrations | Flyway (`V1`…`V20`), Hibernate only validates |
 | Security | Spring Security, stateless JWT (HS256), BCrypt |
 | AI (dev) | Ollama local, or the offline `stub` provider |
 | AI (prod) | Groq API (free) — same `LlmClient` interface, switched by `LLM_PROVIDER` |
@@ -137,6 +137,8 @@ All endpoints except auth, health and Swagger require `Authorization: Bearer <to
 | GET | `/api/auth/me` | Current user / agency |
 | POST | `/api/quotations` | **Star path**: ingest a brief and run the whole pipeline in one call |
 | POST | `/api/briefs` | Ingest a brief only (EMAIL / WHATSAPP / WEB_FORM payloads) |
+| POST | `/api/briefs/upload` | Ingest a brief from an RFP PDF file (`multipart/form-data`: `file`, `clientId`, optional `note`) |
+| GET | `/api/briefs/{id}/attachment` | Download the uploaded RFP PDF (`application/pdf`, inline) |
 | GET | `/api/briefs/{id}` | Brief + ambiguity questions + latest proposal + executions |
 | POST | `/api/briefs/{id}/process` | Run (or re-run) the pipeline on a brief |
 | POST | `/api/briefs/{id}/questions/{questionId}/answer` | Answer a question; the chain re-runs |

@@ -3,6 +3,7 @@ package com.cotizaia.api;
 import com.cotizaia.agent.PipelineRunRecorder.PipelineFailedException;
 import com.cotizaia.domain.state.InvalidStateTransitionException;
 import com.cotizaia.ingest.UnsupportedChannelException;
+import com.cotizaia.ingest.UploadTooLargeException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 /**
  * Maps ingest domain errors to HTTP statuses: bad payload/channel to 400 and a
@@ -74,5 +76,11 @@ public class ApiExceptionHandler {
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public Map<String, String> notFound(NoSuchElementException exception) {
         return Map.of("error", String.valueOf(exception.getMessage()));
+    }
+
+    @ExceptionHandler({UploadTooLargeException.class, MaxUploadSizeExceededException.class})
+    @ResponseStatus(HttpStatus.PAYLOAD_TOO_LARGE)
+    public Map<String, String> tooLarge(RuntimeException exception) {
+        return Map.of("error", "File exceeds 10 MB");
     }
 }
