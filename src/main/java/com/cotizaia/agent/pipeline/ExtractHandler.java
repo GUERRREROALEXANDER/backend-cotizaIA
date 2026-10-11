@@ -22,11 +22,23 @@ import org.springframework.stereotype.Component;
  * Maps model output to agency-owned catalog entries (project.txt section 6) so AI cannot invent billable services.
  * Draft requirements remain in memory until a facade can persist the complete business result.
  *
+ * <p>Why an answered-but-empty scope halts here: the answer is appended to the brief text, yet extraction
+ * can still find zero catalog requirements. The ambiguity gate drops resolved codes by contract, so without
+ * this halt the run would reach generation with no quote and fail on a null dereference (executions 21/22).
+ * Halting re-emits a blocking NO_SCOPE regardless of resolved codes so the question is asked again.
+ *
  * <p>Design pattern - <b>Chain of Responsibility</b>: this ConcreteHandler extracts scope before
  * {@link PipelineHandler} forwards its result to deterministic estimation.
  */
 @Component
 public class ExtractHandler extends PipelineHandler {
+
+    /** Re-asked when a previous scope answer still yields no catalog requirements. */
+    static final String NO_SCOPE_CODE = "NO_SCOPE";
+
+    /** Follow-up wording shown when a previous scope answer yielded no catalog services. */
+    static final String NO_SCOPE_RETRY_QUESTION = "No pude identificar servicios de tu catálogo en la respuesta. "
+            + "¿Qué funcionalidades concretas necesitas (por ejemplo: menú digital, reservas, pagos en línea)?";
 
     private final LlmClient client;
 
@@ -57,7 +69,7 @@ public class ExtractHandler extends PipelineHandler {
         }
         List<CatalogPromptEntry> entries = catalog.stream().map(type -> new CatalogPromptEntry(type.getName(),
                 type.getName() + ", " + (type.getDescription() == null ? "" : type.getDescription()))).toList();
-        String response = client.complete(prompts.extract(context.analysisText(), entries)).content();
+        String response = client.complete(prompts.extract(context.evidenceText(), entries)).content();
         if (response == null || response.isBlank()) {
             throw new IllegalStateException("Invalid extraction JSON");
         }
@@ -96,6 +108,11 @@ public class ExtractHandler extends PipelineHandler {
         }
         context.setRequirements(drafts);
         if (drafts.isEmpty()) {
+            if (context.resolvedCodes().contains(NO_SCOPE_CODE)) {
+                context.getFindings().add(
+                        new AmbiguityFinding(NO_SCOPE_CODE, NO_SCOPE_RETRY_QUESTION, true));
+                return HandlerResult.halt("no scope extracted after a previous answer");
+            }
             context.getFindings().add(new AmbiguityFinding("NO_SCOPE",
                     "\u00bfQue funcionalidades necesitas exactamente? Describe el alcance del proyecto.", true));
             return HandlerResult.flag("no scope extracted");

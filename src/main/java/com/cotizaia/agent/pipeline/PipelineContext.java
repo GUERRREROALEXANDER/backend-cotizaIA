@@ -71,6 +71,21 @@ public class PipelineContext {
         return text.toString();
     }
 
+    /**
+     * Returns only user-provided evidence (brief plus answers) for scope decisions.
+     * Why: question boilerplate must never count as scope. The NO_SCOPE retry question lists
+     * catalog examples ("menú digital, reservas, pagos en línea") and "catálogo" contains the
+     * substring "logo", so feeding questions to classification/extraction invents phantom
+     * requirements and a spurious BRANDING type from wording the user never wrote.
+     */
+    public String evidenceText() {
+        StringBuilder text = new StringBuilder(brief.getRawText());
+        for (Clarification clarification : clarifications) {
+            text.append("\nAclaracion: ").append(clarification.answer());
+        }
+        return text.toString();
+    }
+
     public Set<String> resolvedCodes() {
         return clarifications.stream().map(Clarification::code).collect(Collectors.toSet());
     }

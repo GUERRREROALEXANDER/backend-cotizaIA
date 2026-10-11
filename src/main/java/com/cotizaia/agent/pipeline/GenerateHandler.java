@@ -17,6 +17,9 @@ import org.springframework.stereotype.Component;
  * Produces a summary and three provisional PDFs in memory (project.txt section 6) using existing document generators.
  * Planning uses a deterministic effort split so the model cannot invent prices, payment terms, or phase durations.
  *
+ * <p>Why a null quote halts instead of throwing: empty scope skips pricing, so there is nothing to document.
+ * Halting keeps the run out of FAILED and lets the ambiguity gate ask for scope again (executions 21/22 NPE'd here).
+ *
  * <p>Design pattern - <b>Chain of Responsibility</b>: this ConcreteHandler renders artifacts after ambiguity checking;
  * {@link PipelineHandler} forwards the completed artifacts to the composition successor.
  */
@@ -46,6 +49,9 @@ public class GenerateHandler extends PipelineHandler {
 
     @Override
     protected HandlerResult process(PipelineContext context) {
+        if (context.getQuote() == null) {
+            return HandlerResult.halt("no quote to document");
+        }
         List<String> names = context.getRequirements().stream()
                 .map(draft -> draft.getRequirementType().getName()).toList();
         context.setSummary(client.complete(prompts.summarize(context.analysisText(),

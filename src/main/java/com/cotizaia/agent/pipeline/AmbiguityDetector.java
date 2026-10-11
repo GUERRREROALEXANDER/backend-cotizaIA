@@ -37,7 +37,7 @@ public class AmbiguityDetector {
     }
 
     public List<AmbiguityFinding> detect(PipelineContext context) {
-        String text = normalize(context.analysisText());
+        String text = normalize(context.evidenceText());
         List<AmbiguityFinding> findings = new ArrayList<>();
         if (("WEB_SITE".equals(context.getProjectType()) || "ECOMMERCE".equals(context.getProjectType()))
                 && !PAGE_COUNT.matcher(text).find()) {

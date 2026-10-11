@@ -16,6 +16,10 @@ import org.springframework.transaction.annotation.Transactional;
  * Reconciles clarification evidence across analyses (project.txt section 2).
  * Plain input records keep question persistence independent from the AI pipeline,
  * while resolved answers remain immutable evidence even if no longer detected.
+ *
+ * <p>Why blocking findings reopen their row: when extraction still finds no scope after an answer,
+ * the ambiguity gate re-emits a blocking NO_SCOPE. Reopening that same row (instead of keeping it
+ * resolved) makes the UI ask again; other resolved answers are left untouched as evidence.
  */
 @Service
 public class BriefQuestionService {
@@ -45,6 +49,8 @@ public class BriefQuestionService {
                 } else {
                     question.refresh(spec.question(), spec.blocking());
                 }
+            } else if (spec != null && spec.blocking()) {
+                question.reopen(spec.question(), spec.blocking());
             }
         }
         for (QuestionSpec spec : pending.values()) {
