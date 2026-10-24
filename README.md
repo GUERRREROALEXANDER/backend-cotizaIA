@@ -157,22 +157,28 @@ All endpoints except auth, health and Swagger require `Authorization: Bearer <to
 | GET | `/api/executions?briefId=` · `/api/executions/{id}` | Agent run log (live pipeline view) |
 | GET | `/actuator/health` | Health check (public) |
 
-The full, always-current contract is the OpenAPI document at `/v3/api-docs`.
+The full, always-current contract is the OpenAPI document at `/v3/api-docs`. The caller's identity (user, agency, role) comes only from the JWT, so no operation declares it as a parameter; `GET /api/auth/me` takes no input besides the bearer token.
+
+Controllers map one resource each: `RoleController` owns `/api/roles/**` (including the rates nested under a role) and `RateController` owns `/api/rates/{id}`.
 
 ## Connecting a frontend
 
 1. **Auth:** `POST /api/auth/register` or `/api/auth/login` → store `token`; send `Authorization: Bearer <token>` on every call. Tokens expire after `JWT_TTL` (default 8 h) → re-login on 401.
 2. **CORS:** set `CORS_ALLOWED_ORIGINS` to the exact frontend origins, comma-separated (e.g. `http://localhost:5173,https://cotizaia.vercel.app`). No wildcard is allowed.
 3. **Client generation:** point OpenAPI Generator / Orval at `/v3/api-docs` to get typed clients.
-4. **Errors:** always JSON `{"error": "...", "fields": {...}}` (`fields` only on validation).
+4. **Errors:** every failure, including framework-level ones, is JSON `{"error": "...", "fields": {...}}` (`fields` only on validation). Internal details (class names, stack traces) are never returned.
 
 | Status | Meaning |
 |---|---|
-| 400 | Validation failed / malformed JSON |
+| 400 | Validation failed (body or parameters), malformed JSON, bad parameter type (`/api/proposals/abc`, unknown enum), missing required parameter |
 | 401 | Missing, invalid or expired token; wrong credentials |
-| 404 | Not found **or belongs to another agency** |
+| 403 | Authenticated but not allowed |
+| 404 | Not found **or belongs to another agency**; unknown route |
+| 405 | HTTP method not supported on that path |
 | 409 | Conflict (duplicate email, data in use, not approved yet) |
+| 415 | Unsupported `Content-Type` (send `application/json`) |
 | 422 | Illegal lifecycle move (includes `from` and `to`) |
+| 500 | Unexpected server error (logged server-side, generic message) |
 | 503 | Agent pipeline failed (includes `executionId` to inspect the run log) |
 
 5. **PDFs:** `GET /api/proposals/{id}/documents/{type}` returns `application/pdf` with `Content-Disposition` (exposed by CORS).
