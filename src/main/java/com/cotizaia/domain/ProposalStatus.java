@@ -4,7 +4,7 @@ import com.cotizaia.domain.state.ProposalStates;
 
 /**
  * Lifecycle of a {@link Proposal} (project.txt section 6 pattern 9: State;
- * section 2 "Hacer seguimiento del estado"). Stored in
+ * section 2 "Track the status"). Stored in
  * {@code proposals.status} and constrained by {@code ck_proposals_status}.
  *
  * <p>Design pattern - <b>State</b>: this persisted value delegates lifecycle

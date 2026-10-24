@@ -16,7 +16,7 @@ import java.time.Instant;
 
 /**
  * One recorded extra of a {@link Proposal} (project.txt section 9 schema:
- * Propuesta -> Extra). It is the persisted footprint of a
+ * Proposal -> Extra). It is the persisted footprint of a
  * {@link ProposalPriceDecorator}: {@code type} is the decorator's kind,
  * {@code percentOrFixed} its rate, and {@code amount} the signed money delta it
  * contributed to the total.

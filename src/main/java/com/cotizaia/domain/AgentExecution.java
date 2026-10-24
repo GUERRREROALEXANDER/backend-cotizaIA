@@ -20,8 +20,8 @@ import java.util.List;
 
 /**
  * Run log for one pass of the agent's Chain of Responsibility over a
- * {@link Brief} (project.txt section 2: "Ver el pipeline del agente ejecutarse
- * en vivo"). It is the aggregate root of the observability feed: it composes
+ * {@link Brief} (project.txt section 2: "Watch the agent pipeline run
+ * live"). It is the aggregate root of the observability feed: it composes
  * its {@link AgentStep} children and owns their lifecycle, so the whole run —
  * one execution plus N steps — is written and read as a single unit.
  *

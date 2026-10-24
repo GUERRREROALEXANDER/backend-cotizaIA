@@ -12,7 +12,7 @@ import jakarta.persistence.Table;
 
 /**
  * One clause of a {@link Contract} (project.txt section 9 schema:
- * Propuesta -> Contrato -> Clausula). It stores the clause text and its display
+ * Proposal -> Contract -> Clause). It stores the clause text and its display
  * order in the contract.
  *
  * <p>Design pattern - <b>Composition</b>: the clause is a composed child, only

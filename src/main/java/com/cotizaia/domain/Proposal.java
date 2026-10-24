@@ -30,7 +30,7 @@ import java.util.List;
 
 /**
  * Aggregate root for a priced offer over a {@link Brief} (project.txt section 9
- * schema: Propuesta -> ItemCotizado; section 6 pattern 2 Builder, pattern 9
+ * schema: Proposal -> QuotedItem; section 6 pattern 2 Builder, pattern 9
  * State).
  *
  * <p>Design patterns:
@@ -114,7 +114,7 @@ public class Proposal {
 
     /**
      * The proposal's smart schedule (project.txt section 5, section 9 schema:
-     * Propuesta -> Cronograma). Optional: a proposal in review may not have one
+     * Proposal -> Schedule). Optional: a proposal in review may not have one
      * yet. Kept here so an hour edit can cascade into it.
      */
     @OneToOne(mappedBy = "proposal", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -165,7 +165,7 @@ public class Proposal {
     }
 
     /**
-     * Records one applied extra (project.txt section 9: Propuesta -> Extra).
+     * Records one applied extra (project.txt section 9: Proposal -> Extra).
      * Called by {@link ProposalPriceDecorator#recordOn}, which supplies the
      * decorator's type, rate magnitude and signed delta.
      */
@@ -198,8 +198,8 @@ public class Proposal {
 
     /**
      * Approves a human adjustment of one quoted line's hours and cascades it
-     * (project.txt section 5: "Si el humano cambia las horas al aprobar, el
-     * cronograma se recalcula en cascada"). The line is immutable, so the edit
+     * (project.txt section 5: "If the human changes the hours on approval, the
+     * schedule is recalculated in cascade"). The line is immutable, so the edit
      * is applied by replacing it on the aggregate with the same requirement,
      * unit price and new hours; adding it recomputes the totals, and then the
      * attached schedule re-derives every phase duration and downstream shift.
