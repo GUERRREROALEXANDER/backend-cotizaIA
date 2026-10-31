@@ -29,7 +29,7 @@ class GroqClientTests {
         server.expect(requestTo("https://api.groq.com/openai/v1/chat/completions"))
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(header("Authorization", "Bearer test-key"))
-                .andExpect(content().json("{\"model\":\"llama-3.1-8b-instant\",\"temperature\":0,"
+                .andExpect(content().json("{\"model\":\"openai/gpt-oss-20b\",\"temperature\":0,"
                         + "\"response_format\":{\"type\":\"json_object\"},"
                         + "\"messages\":[{\"role\":\"system\",\"content\":\"system\"},"
                         + "{\"role\":\"user\",\"content\":\"user\"}]}"))

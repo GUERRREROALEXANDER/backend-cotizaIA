@@ -58,7 +58,7 @@ llm:
     # Required when llm.provider=groq. API key for the Groq free tier.
     api-key: ${GROQ_API_KEY:}
     # Optional. Groq model id.
-    model: ${GROQ_MODEL:llama-3.1-8b-instant}
+    model: ${GROQ_MODEL:openai/gpt-oss-20b}
   timeout:
     connect: ${LLM_CONNECT_TIMEOUT:5s}
     read: ${LLM_READ_TIMEOUT:60s}
@@ -87,7 +87,7 @@ llm:
 # OLLAMA_BASE_URL  Default http://localhost:11434.
 # OLLAMA_MODEL     Default llama3.1.
 # GROQ_BASE_URL    Default https://api.groq.com/openai/v1.
-# GROQ_MODEL       Default llama-3.1-8b-instant.
+# GROQ_MODEL       Default openai/gpt-oss-20b.
 # PRICING_FIXED_RISK_BUFFER  Default 0.20.
 # PRICING_PHASED_OVERHEAD    Default 0.10.
 # PIPELINE_DEFAULT_HOURS    Default 8 when a catalog estimate is missing.
