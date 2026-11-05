@@ -1,5 +1,6 @@
 package com.cotizaia.repository;
 
+import com.cotizaia.domain.ChunkKind;
 import com.cotizaia.domain.KnowledgeChunk;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -8,4 +9,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface KnowledgeChunkRepository extends JpaRepository<KnowledgeChunk, Long> {
 
     List<KnowledgeChunk> findByDocumentIdOrderByOrdinalAsc(Long documentId);
+
+    long countByDocumentIdAndKind(Long documentId, ChunkKind kind);
 }

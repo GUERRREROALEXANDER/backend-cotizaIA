@@ -24,13 +24,11 @@ public class PdfBriefReader {
     public static final int MAX_TEXT_CHARS = 20_000;
 
     /**
-     * Extracts the brief text from raw PDF bytes.
-     *
-     * @throws IllegalArgumentException when the bytes are empty, are not a
-     *         readable PDF, or hold no extractable text at all.
-     * @throws UploadTooLargeException when the file exceeds {@link #MAX_BYTES}.
+     * Extracts one string per page from raw PDF bytes. A page with no
+     * extractable text becomes an empty string. Validation and limits match
+     * {@link #read}.
      */
-    public PdfExtraction read(byte[] bytes) {
+    public List<String> readPages(byte[] bytes) {
         if (bytes == null || bytes.length == 0) {
             throw new IllegalArgumentException("Uploaded file is empty");
         }
@@ -51,27 +49,48 @@ public class PdfBriefReader {
                         "PDF has " + pages + " pages, maximum is " + MAX_PAGES);
             }
             PDFTextStripper stripper = new PDFTextStripper();
-            List<String> texts = new ArrayList<>();
-            List<Integer> unreadablePages = new ArrayList<>();
+            List<String> result = new ArrayList<>();
+            List<String> nonBlank = new ArrayList<>();
             for (int page = 1; page <= pages; page++) {
                 stripper.setStartPage(page);
                 stripper.setEndPage(page);
                 String text = stripper.getText(document);
                 if (text == null || text.isBlank()) {
-                    unreadablePages.add(page);
+                    result.add("");
                 } else {
-                    texts.add(text.strip());
+                    String stripped = text.strip();
+                    result.add(stripped);
+                    nonBlank.add(stripped);
                 }
             }
-            if (texts.isEmpty()) {
+            if (nonBlank.isEmpty()) {
                 throw new IllegalArgumentException("PDF has no extractable text");
             }
-            String joined = String.join("\n\n", texts);
-            boolean truncated = joined.length() > MAX_TEXT_CHARS;
-            String text = truncated ? joined.substring(0, MAX_TEXT_CHARS) : joined;
-            return new PdfExtraction(text, pages, truncated, List.copyOf(unreadablePages));
+            return List.copyOf(result);
         } catch (IOException e) {
             throw new IllegalArgumentException("File is not a readable PDF", e);
         }
+    }
+
+    /**
+     * Extracts the brief text from raw PDF bytes.
+     *
+     * @throws IllegalArgumentException when the bytes are empty, are not a
+     *         readable PDF, or hold no extractable text at all.
+     * @throws UploadTooLargeException when the file exceeds {@link #MAX_BYTES}.
+     */
+    public PdfExtraction read(byte[] bytes) {
+        List<String> pages = readPages(bytes);
+        List<String> texts = pages.stream().filter(s -> !s.isBlank()).toList();
+        List<Integer> unreadablePages = new ArrayList<>();
+        for (int i = 0; i < pages.size(); i++) {
+            if (pages.get(i).isBlank()) {
+                unreadablePages.add(i + 1);
+            }
+        }
+        String joined = String.join("\n\n", texts);
+        boolean truncated = joined.length() > MAX_TEXT_CHARS;
+        String text = truncated ? joined.substring(0, MAX_TEXT_CHARS) : joined;
+        return new PdfExtraction(text, pages.size(), truncated, List.copyOf(unreadablePages));
     }
 }
