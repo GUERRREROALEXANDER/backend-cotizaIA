@@ -29,7 +29,42 @@ beans `LlmClient` (non-stub wrapped in the existing `RetryLlmClient`, as today) 
 `.env.example` / `render.yaml` gain `VOYAGE_API_KEY` (`sync: false`).
 
 ## Part B - Knowledge tables and vector stores
-Added after Part A lands.
+Tests: `src/test/java/com/cotizaia/agent/knowledge/{VectorStoreContract,JdbcVectorStoreTests,PgVectorStoreTests}.java`
+(`PgVectorStoreTests` runs PostgreSQL 16 + pgvector in Docker via Testcontainers; it must pass locally, Docker is available).
+
+**Domain (`com.cotizaia.domain`, JPA, constructors exactly as the tests call them):**
+- enums `ChunkKind {PASSAGE, ITEM}`, `KnowledgeDocumentKind {PROPOSAL_PDF, APPROVED_PROPOSAL}`
+- `KnowledgeDocument(Agency agency, String name, KnowledgeDocumentKind kind)`; also `sourceProposalId` (Long, nullable),
+  `pageCount` (Integer, nullable), `createdAt` (set on persist). `name` encrypted (`EncryptedStringConverter`).
+- `KnowledgeChunk(KnowledgeDocument document, ChunkKind kind, String text, Integer page, String requirementType,
+  BigDecimal hours, int ordinal)`; `text` encrypted; `requirementType` and `hours` plaintext (catalog name / number).
+- repositories `KnowledgeDocumentRepository`, `KnowledgeChunkRepository` (Spring Data).
+
+**Migrations (Flyway).** `spring.flyway.locations` becomes `classpath:db/migration,classpath:db/vendor/{vendor}` in
+`application.yml` (the test yml already says so).
+- `db/migration/V23__knowledge_documents_chunks.sql` (portable): `knowledge_documents`, `knowledge_chunks`
+  (FK document ON DELETE CASCADE), `knowledge_vectors(chunk_id PK FK knowledge_chunks ON DELETE CASCADE,
+  agency_id NOT NULL, document_id NOT NULL, kind, requirement_type NULL, dims INT NOT NULL, vector BYTEA NOT NULL)`
+  + index `(agency_id, kind)`. Follow the style of the existing migrations (they run on H2 and PostgreSQL).
+- `db/vendor/postgresql/V24__pgvector.sql`: `CREATE EXTENSION IF NOT EXISTS vector;` + table `knowledge_vectors_pg`
+  same columns but `embedding vector NOT NULL` (no fixed dimension: stub=256, Voyage=1024) instead of dims/vector.
+- `db/vendor/h2/V24__pgvector.sql`: comment explaining H2 has no pgvector + `SELECT 1;` (keeps versions aligned).
+- `docker-compose.yml` image -> `pgvector/pgvector:pg16`. README: Supabase has pgvector (enabled by V24).
+
+**`com.cotizaia.agent.knowledge`:**
+- records `VectorEntry(long chunkId, long agencyId, long documentId, ChunkKind kind, String requirementType, float[] vector)`,
+  `VectorQuery(long agencyId, ChunkKind kind, String requirementType /*nullable = any*/, float[] vector, int k)`,
+  `VectorMatch(long chunkId, double similarity)` (cosine similarity, 1 = identical).
+- `VectorStore` (**Bridge implementor**): `void upsert(List<VectorEntry>)` (insert or replace by chunkId),
+  `List<VectorMatch> search(VectorQuery)` (only that agency, that kind, that requirementType when not null;
+  most similar first; at most k), `void deleteDocument(long agencyId, long documentId)` (agency-scoped), `String name()`.
+- `JdbcVectorStore` (`name()="jdbc"`): float[] as little-endian bytes; loads candidates of the agency+kind(+type)
+  with SQL, exact cosine in Java, top k. Parameterized SQL only.
+- `PgVectorStore` (`name()="pgvector"`): `ORDER BY embedding <=> CAST(? AS vector) LIMIT ?`, similarity
+  `1 - (embedding <=> CAST(? AS vector))`; vector literal built from floats (`[0.1,0.2,...]`), always a bound parameter.
+- Bean selection: `knowledge.vector-store` = `jdbc` (default) | `pgvector`; `application-prod.yml` sets `pgvector`.
+
+**pom.xml (already added by the test author):** `org.testcontainers:postgresql` and `org.testcontainers:junit-jupiter`, test scope.
 
 ## Part C - Ingestion and retrieval
 Written after Part B lands.
