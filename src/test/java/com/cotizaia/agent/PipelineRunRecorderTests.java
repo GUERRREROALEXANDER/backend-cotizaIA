@@ -31,6 +31,7 @@ import org.springframework.test.context.ActiveProfiles;
  * without {@code @Transactional} to observe what is truly persisted.
  */
 @SpringBootTest
+@org.junit.jupiter.api.extension.ExtendWith(org.springframework.boot.test.system.OutputCaptureExtension.class)
 @ActiveProfiles("test")
 class PipelineRunRecorderTests {
 
@@ -142,6 +143,30 @@ class PipelineRunRecorderTests {
                 .get(0);
         assertThat(step.getDurationMs()).isNotNull().isGreaterThanOrEqualTo(0);
         assertThat(step.getOutputSummary()).isEqualTo("done");
+    }
+
+    /** Spec 07: a failed run must be diagnosable from the logs alone, without leaking the client's brief. */
+    @Test
+    void failedRunIsLoggedWithExecutionHandlerAndCauseButNotTheBrief(
+            org.springframework.boot.test.system.CapturedOutput output) {
+        PipelineStep boom = new PipelineStep() {
+            @Override
+            public String name() {
+                return "GenerateHandler";
+            }
+
+            @Override
+            public Object execute(Object context) {
+                throw new IllegalStateException("groq HTTP 429");
+            }
+        };
+        assertThatThrownBy(() -> recorder.run(brief, List.of(step("ClassifyHandler", "Web"), boom)))
+                .isInstanceOf(PipelineRunRecorder.PipelineFailedException.class);
+        Long executionId = agentExecutionRepository.findByBriefIdOrderByIdAsc(brief.getId()).get(0).getId();
+
+        assertThat(output.getAll()).contains("Pipeline run failed").contains("execution=" + executionId)
+                .contains("handler=GenerateHandler").contains("IllegalStateException").contains("groq HTTP 429")
+                .doesNotContain(brief.getRawText());
     }
 
     private PipelineStep step(String name, String output) {
