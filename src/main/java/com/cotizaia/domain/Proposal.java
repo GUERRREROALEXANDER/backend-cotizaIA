@@ -101,6 +101,10 @@ public class Proposal {
     @Column
     private String extras;
 
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(name = "drafted_content")
+    private String draftedContent;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -387,6 +391,15 @@ public class Proposal {
 
     public String getExtras() {
         return extras;
+    }
+
+    /** Encrypted JSON of the AI/template proposal text, kept so approval can regenerate the same PDF. */
+    public String getDraftedContent() {
+        return draftedContent;
+    }
+
+    public void setDraftedContent(String draftedContent) {
+        this.draftedContent = draftedContent;
     }
 
     public Instant getCreatedAt() {

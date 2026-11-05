@@ -17,7 +17,8 @@ import java.util.List;
 public record DocumentData(
         String agencyName, String clientName, String reference, LocalDate issuedOn, String summary,
         PricingModel pricingModel, List<LineData> lines, BigDecimal subtotal, List<ExtraData> extras,
-        BigDecimal total, BigDecimal depositAmount, List<PhaseData> phases, List<String> clauses) {
+        BigDecimal total, BigDecimal depositAmount, List<PhaseData> phases, List<String> clauses,
+        DocumentNode body) {
 
     public DocumentData {
         lines = List.copyOf(lines);
@@ -26,7 +27,19 @@ public record DocumentData(
         clauses = List.copyOf(clauses);
     }
 
+    /** Keeps every existing caller compiling: a request without a drafted body renders template-only. */
+    public DocumentData(String agencyName, String clientName, String reference, LocalDate issuedOn, String summary,
+            PricingModel pricingModel, List<LineData> lines, BigDecimal subtotal, List<ExtraData> extras,
+            BigDecimal total, BigDecimal depositAmount, List<PhaseData> phases, List<String> clauses) {
+        this(agencyName, clientName, reference, issuedOn, summary, pricingModel, lines, subtotal, extras, total,
+                depositAmount, phases, clauses, null);
+    }
+
     public static DocumentData from(Proposal proposal, List<String> clauses, String summary) {
+        return from(proposal, clauses, summary, null);
+    }
+
+    public static DocumentData from(Proposal proposal, List<String> clauses, String summary, DocumentNode body) {
         List<LineData> lines = proposal.getItems().stream().map(DocumentData::line).toList();
         List<ExtraData> extras = proposal.getAppliedExtras().stream().map(DocumentData::extra).toList();
         List<PhaseData> phases = proposal.getSchedulePlan() == null ? List.of()
@@ -35,7 +48,7 @@ public record DocumentData(
                 proposal.getBrief().getClient().getName(), "Brief #" + proposal.getBrief().getId(),
                 LocalDate.now(), summary, proposal.getPricingModel(), lines, proposal.getSubtotal(), extras,
                 proposal.getTotal(), proposal.getTotal().multiply(new BigDecimal("0.50"))
-                        .setScale(2, RoundingMode.HALF_UP), phases, clauses);
+                        .setScale(2, RoundingMode.HALF_UP), phases, clauses, body);
     }
 
     private static LineData line(QuotedItem item) {

@@ -5,5 +5,6 @@ public enum LlmTask {
     CLASSIFY,
     EXTRACT,
     EXTRACT_ITEMS,
-    SUMMARIZE
+    SUMMARIZE,
+    DRAFT_PROPOSAL
 }

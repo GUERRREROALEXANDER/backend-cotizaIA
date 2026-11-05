@@ -121,6 +121,8 @@ public class ProposalLifecycleWriter {
         }
         proposal.applyPricingModel(draft.quote().model());
         attachSchedule(proposal, draft);
+        proposal.setDraftedContent(context.getProposalDraft() == null ? null
+                : context.getProposalDraft().toJson());
         proposals.saveAndFlush(proposal);
         if (contracts.findByProposalId(proposalId).isEmpty()) {
             contractService.generateDraft(proposalId, List.of());

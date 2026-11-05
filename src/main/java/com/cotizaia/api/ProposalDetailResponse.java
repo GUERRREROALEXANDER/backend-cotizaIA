@@ -2,6 +2,7 @@ package com.cotizaia.api;
 
 import com.cotizaia.agent.pipeline.Citation;
 import com.cotizaia.agent.pipeline.EstimateSource;
+import com.cotizaia.document.ProposalDraft;
 import com.cotizaia.domain.ExtractedRequirement;
 import com.cotizaia.domain.Payment;
 import com.cotizaia.domain.Phase;
@@ -25,7 +26,8 @@ import java.util.Set;
 public record ProposalDetailResponse(Long id, Long briefId, ProposalStatus status,
         Set<ProposalStatus> allowedTransitions, BigDecimal subtotal, BigDecimal total, PricingModel pricingModel,
         Instant approvedAt, List<ItemResponse> items, List<ExtraResponse> extras, ScheduleResponse schedule,
-        List<StatusChangeResponse> statusHistory, List<DocumentResponse> documents, DepositResponse deposit) {
+        List<StatusChangeResponse> statusHistory, List<DocumentResponse> documents, DepositResponse deposit,
+        ProposalDraft draft) {
 
     public static ProposalDetailResponse from(Detail detail) {
         Proposal proposal = detail.proposal();
@@ -37,7 +39,15 @@ public record ProposalDetailResponse(Long id, Long briefId, ProposalStatus statu
                 ScheduleResponse.from(proposal.getSchedulePlan()),
                 proposal.getStatusHistory().stream().map(StatusChangeResponse::from).toList(),
                 detail.documents().stream().map(DocumentResponse::from).toList(),
-                DepositResponse.from(detail.deposit()));
+                DepositResponse.from(detail.deposit()), draft(proposal));
+    }
+
+    private static ProposalDraft draft(Proposal proposal) {
+        try {
+            return ProposalDraft.fromJson(proposal.getDraftedContent());
+        } catch (IllegalArgumentException exception) {
+            return null;
+        }
     }
 
     /** One priced requirement with its current reviewed hours and estimation provenance. */

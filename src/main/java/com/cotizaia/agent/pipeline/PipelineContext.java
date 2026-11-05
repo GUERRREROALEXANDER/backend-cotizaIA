@@ -2,6 +2,7 @@ package com.cotizaia.agent.pipeline;
 
 import com.cotizaia.document.DocumentData;
 import com.cotizaia.document.DocumentType;
+import com.cotizaia.document.ProposalDraft;
 import com.cotizaia.domain.Brief;
 import com.cotizaia.pricing.PricingQuote;
 import java.math.BigDecimal;
@@ -42,6 +43,8 @@ public class PipelineContext {
     private Map<DocumentType, byte[]> documents = Map.of();
 
     private List<DocumentData.PhaseData> phasePlan = List.of();
+
+    private ProposalDraft proposalDraft;
 
     private QuoteDraft draft;
 
@@ -174,6 +177,14 @@ public class PipelineContext {
 
     public void setPhasePlan(List<DocumentData.PhaseData> value) {
         phasePlan = value;
+    }
+
+    public ProposalDraft getProposalDraft() {
+        return proposalDraft;
+    }
+
+    public void setProposalDraft(ProposalDraft value) {
+        proposalDraft = value;
     }
 
     public QuoteDraft getDraft() {

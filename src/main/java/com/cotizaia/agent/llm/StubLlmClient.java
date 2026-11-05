@@ -30,6 +30,7 @@ public class StubLlmClient implements LlmClient {
             case EXTRACT -> extract(brief, request.userPrompt());
             case EXTRACT_ITEMS -> extractItems(request.userPrompt());
             case SUMMARIZE -> "Resumen ejecutivo: " + brief;
+            case DRAFT_PROPOSAL -> draftProposal(request.userPrompt());
         };
         return new LlmResponse(content, provider(), "offline-stub", 0);
     }
@@ -133,6 +134,45 @@ public class StubLlmClient implements LlmClient {
             }
         }
         return json(java.util.Map.of("items", items));
+    }
+
+    private String draftProposal(String prompt) {
+        List<String> requirements = lines(PromptBuilder.section(prompt, "requirements").orElse(""));
+        Long firstChunk = firstChunkId(PromptBuilder.section(prompt, "passages").orElse(""));
+        List<Object> citations = firstChunk == null ? List.of() : List.of(firstChunk);
+        List<Map<String, Object>> scope = new ArrayList<>();
+        for (String requirement : requirements) {
+            scope.add(Map.of("requirement", requirement,
+                    "text", "Implementación de " + requirement + " según lo solicitado por el cliente.",
+                    "citations", citations));
+        }
+        Map<String, Object> assumption = Map.of("text", "El cliente entrega los contenidos y accesos necesarios.",
+                "citations", citations);
+        Map<String, Object> exclusion = Map.of("text", "Publicidad pagada y manejo de redes sociales.",
+                "citations", List.of());
+        java.util.LinkedHashMap<String, Object> draft = new java.util.LinkedHashMap<>();
+        draft.put("scope", scope);
+        draft.put("assumptions", List.of(assumption));
+        draft.put("exclusions", List.of(exclusion));
+        return json(draft);
+    }
+
+    private List<String> lines(String section) {
+        List<String> values = new ArrayList<>();
+        for (String line : section.split("\\R")) {
+            if (!line.isBlank()) {
+                values.add(line.trim());
+            }
+        }
+        return values;
+    }
+
+    private Long firstChunkId(String passages) {
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("\\[(\\d+)\\]").matcher(passages);
+        while (matcher.find()) {
+            return Long.valueOf(matcher.group(1));
+        }
+        return null;
     }
 
     private Object parseNumber(String value) {

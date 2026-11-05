@@ -25,6 +25,9 @@ public class ProposalDocumentGenerator extends AbstractDocumentTemplate {
         if (data.summary() != null) {
             document.add(new Paragraph(data.summary()));
         }
+        if (data.body() != null) {
+            data.body().render(document);
+        }
         PdfPTable items = table("Requerimiento", "Horas", "Precio unitario", "Total");
         for (DocumentData.LineData line : data.lines()) {
             items.addCell(line.label());
