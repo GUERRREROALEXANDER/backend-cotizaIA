@@ -15,6 +15,9 @@ llm:
   provider: stub
 
 security:
+  # Every test registers from 127.0.0.1 in a shared context; limits are exercised only by RateLimitTests.
+  rate-limit:
+    enabled: false
   jwt:
     secret: cotizaia-test-only-secret-never-use-in-production
 
