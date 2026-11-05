@@ -5,6 +5,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
@@ -35,7 +36,15 @@ abstract class AbstractHttpLlmClient implements LlmClient {
 
     protected LlmException mapFailure(RestClientResponseException exception) {
         int status = exception.getStatusCode().value();
-        return new LlmException(provider() + " HTTP " + status, status == 429 || status >= 500, exception);
+        Duration retryAfter = retryAfter(exception);
+        return new LlmException(
+                provider() + " HTTP " + status, status == 429 || status >= 500, retryAfter, exception);
+    }
+
+    private Duration retryAfter(RestClientResponseException exception) {
+        HttpHeaders headers = exception.getResponseHeaders();
+        String value = headers == null ? null : headers.getFirst(HttpHeaders.RETRY_AFTER);
+        return RetryAfter.parse(value).orElse(null);
     }
 
     protected LlmException mapFailure(ResourceAccessException exception) {

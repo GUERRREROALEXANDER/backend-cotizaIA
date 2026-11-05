@@ -63,9 +63,10 @@ llm:
     connect: ${LLM_CONNECT_TIMEOUT:5s}
     read: ${LLM_READ_TIMEOUT:60s}
   retry:
-    max-attempts: ${LLM_RETRY_MAX_ATTEMPTS:3}
+    max-attempts: ${LLM_RETRY_MAX_ATTEMPTS:4}
     initial-backoff: ${LLM_RETRY_INITIAL_BACKOFF:500ms}
     multiplier: ${LLM_RETRY_MULTIPLIER:2.0}
+    max-backoff: ${LLM_RETRY_MAX_BACKOFF:60s}
 
 # =============================================================================
 # Required environment variables
@@ -81,7 +82,8 @@ llm:
 # LLM_PROVIDER     ollama | groq | stub (default ollama).
 # LLM_CONNECT_TIMEOUT  Default 5s.
 # LLM_READ_TIMEOUT     Default 60s.
-# LLM_RETRY_MAX_ATTEMPTS  Default 3.
+# LLM_RETRY_MAX_ATTEMPTS  Default 4.
+# LLM_RETRY_MAX_BACKOFF   Default 60s (also caps provider Retry-After).
 # LLM_RETRY_INITIAL_BACKOFF  Default 500ms.
 # LLM_RETRY_MULTIPLIER  Default 2.0.
 # OLLAMA_BASE_URL  Default http://localhost:11434.

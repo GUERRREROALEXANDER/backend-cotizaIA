@@ -9,6 +9,8 @@ import com.cotizaia.repository.AgentExecutionRepository;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -33,6 +35,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  */
 @Service
 public class PipelineRunRecorder {
+
+    private static final Logger log = LoggerFactory.getLogger(PipelineRunRecorder.class);
 
     private final AgentExecutionRepository agentExecutionRepository;
     private final TransactionTemplate transactionTemplate;
@@ -88,6 +92,7 @@ public class PipelineRunRecorder {
             execution.fail(summarize(message == null || message.isBlank() ? failure.toString() : message),
                     Instant.now());
             agentExecutionRepository.saveAndFlush(execution);
+            logFailure(execution, handler, failure);
             return new RunOutcome(execution, context, failure);
         }
     }
@@ -108,14 +113,16 @@ public class PipelineRunRecorder {
             // The log must survive the failure, so the execution is closed here
             // and the exception is carried out instead of thrown, keeping this
             // transaction commit-safe.
+            String handler = failureHandlerName(steps, execution);
             execution.addStep(
-                    failureHandlerName(steps, execution),
+                    handler,
                     summarize(context),
                     summarize(failure.getMessage()),
                     null,
                     StepStatus.FAILED);
             execution.fail(failure.getMessage() != null ? failure.getMessage() : failure.toString(), Instant.now());
             agentExecutionRepository.saveAndFlush(execution);
+            logFailure(execution, handler, failure);
             return new RunOutcome(execution, context, failure);
         }
     }
@@ -138,6 +145,17 @@ public class PipelineRunRecorder {
     private String failureHandlerName(List<PipelineStep> steps, AgentExecution execution) {
         int reached = execution.getSteps().size();
         return reached < steps.size() ? steps.get(reached).name() : "pipeline";
+    }
+
+    /** One WARN line per failed run: enough to diagnose it without echoing client data. */
+    private void logFailure(AgentExecution execution, String handler, RuntimeException failure) {
+        String message = failure.getMessage();
+        log.warn(
+                "Pipeline run failed execution={} handler={} cause={}: {}",
+                execution.getId(),
+                handler,
+                failure.getClass().getSimpleName(),
+                message == null ? "" : message);
     }
 
     private String summarize(Object value) {

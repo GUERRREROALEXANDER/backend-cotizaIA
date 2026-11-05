@@ -48,9 +48,10 @@ llm:
     connect: ${LLM_CONNECT_TIMEOUT:5s}
     read: ${LLM_READ_TIMEOUT:60s}
   retry:
-    max-attempts: ${LLM_RETRY_MAX_ATTEMPTS:3}
+    max-attempts: ${LLM_RETRY_MAX_ATTEMPTS:4}
     initial-backoff: ${LLM_RETRY_INITIAL_BACKOFF:500ms}
     multiplier: ${LLM_RETRY_MULTIPLIER:2.0}
+    max-backoff: ${LLM_RETRY_MAX_BACKOFF:60s}
 
 embedding:
   voyage:

@@ -129,6 +129,7 @@ public class LlmProperties {
         private int maxAttempts = 3;
         private Duration initialBackoff = Duration.ofMillis(500);
         private double multiplier = 2.0;
+        private Duration maxBackoff = Duration.ofSeconds(60);
 
         public int getMaxAttempts() {
             return maxAttempts;
@@ -152,6 +153,14 @@ public class LlmProperties {
 
         public void setMultiplier(double multiplier) {
             this.multiplier = multiplier;
+        }
+
+        public Duration getMaxBackoff() {
+            return maxBackoff;
+        }
+
+        public void setMaxBackoff(Duration maxBackoff) {
+            this.maxBackoff = maxBackoff;
         }
     }
 }

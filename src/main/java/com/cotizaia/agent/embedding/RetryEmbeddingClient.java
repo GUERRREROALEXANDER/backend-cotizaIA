@@ -36,8 +36,7 @@ public class RetryEmbeddingClient implements EmbeddingClient {
                 if (!exception.isRetryable() || attempt >= maxAttempts) {
                     throw exception;
                 }
-                long delay = (long) (initialBackoff.toMillis() * Math.pow(multiplier, attempt - 1));
-                delay = Math.min(delay, maxBackoff.toMillis());
+                long delay = retryDelay(attempt, exception);
                 try {
                     sleeper.sleep(Duration.ofMillis(delay));
                 } catch (InterruptedException interrupted) {
@@ -46,6 +45,13 @@ public class RetryEmbeddingClient implements EmbeddingClient {
                 }
             }
         }
+    }
+
+    /** Waits for the provider hint when it is longer than our backoff, but never past the cap. */
+    private long retryDelay(int attempt, EmbeddingException exception) {
+        long backoffMillis = (long) (initialBackoff.toMillis() * Math.pow(multiplier, attempt - 1));
+        long delayMillis = Math.max(backoffMillis, exception.retryAfter().map(Duration::toMillis).orElse(0L));
+        return Math.min(delayMillis, maxBackoff.toMillis());
     }
 
     @Override
