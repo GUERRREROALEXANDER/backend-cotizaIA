@@ -63,6 +63,8 @@ class EstimationEvalTests {
     static void provider(DynamicPropertyRegistry registry) {
         registry.add("llm.provider", () -> System.getProperty("eval.provider", "stub"));
         registry.add("knowledge.vector-store", () -> "jdbc");
+        // With a rate-limited real provider the run outlasts the 15-minute access token; the eval is one long session.
+        registry.add("security.jwt.ttl", () -> "PT2H");
     }
 
     @Autowired
