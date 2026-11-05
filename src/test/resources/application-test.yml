@@ -17,3 +17,10 @@ llm:
 security:
   jwt:
     secret: cotizaia-test-only-secret-never-use-in-production
+
+# Test-only keys (32 bytes each, base64). Production keys come from the environment, never from files.
+crypto:
+  active-key-id: k1
+  keys:
+    k1: AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=
+  blind-index-key: BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc=
