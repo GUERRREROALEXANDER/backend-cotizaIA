@@ -21,6 +21,8 @@ services:
         sync: false
       - key: GROQ_API_KEY
         sync: false
+      - key: VOYAGE_API_KEY
+        sync: false
       - key: JWT_SECRET
         sync: false
       - key: DATA_ENCRYPTION_KEY

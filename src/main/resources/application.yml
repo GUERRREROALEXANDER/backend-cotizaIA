@@ -52,6 +52,18 @@ llm:
     initial-backoff: ${LLM_RETRY_INITIAL_BACKOFF:500ms}
     multiplier: ${LLM_RETRY_MULTIPLIER:2.0}
 
+embedding:
+  voyage:
+    base-url: ${VOYAGE_BASE_URL:https://api.voyageai.com/v1}
+    api-key: ${VOYAGE_API_KEY:}
+    model: ${VOYAGE_MODEL:voyage-4-lite}
+  dimensions: ${EMBEDDING_DIMENSIONS:1024}
+  batch-size: ${EMBEDDING_BATCH_SIZE:64}
+  cache-size: ${EMBEDDING_CACHE_SIZE:10000}
+  ollama:
+    base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+    model: ${OLLAMA_MODEL_EMBED:nomic-embed-text}
+
 security:
   jwt:
     secret: ${JWT_SECRET:}
