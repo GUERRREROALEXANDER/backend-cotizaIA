@@ -96,6 +96,12 @@ class AgentPipelineIntegrationTests {
     @Autowired
     private PipelineProperties properties;
 
+    @Autowired
+    private RetrieveHandler retrieve;
+
+    @Autowired
+    private EstimateHandler estimate;
+
     @Test
     void restaurantProducesFlaggedDraftAndThreeDocuments() throws Exception {
         PipelineContext context = context("Hola, tengo un restaurante y necesito una pagina web donde los clientes "
@@ -164,7 +170,7 @@ class AgentPipelineIntegrationTests {
         PromptBuilder prompts = new PromptBuilder();
         ObjectMapper mapper = new ObjectMapper();
         AgentPipeline failingPipeline = new AgentPipeline(new ClassifyHandler(failing, prompts, mapper),
-                new ExtractHandler(failing, prompts, mapper, requirementTypes), new EstimateHandler(properties),
+                new ExtractHandler(failing, prompts, mapper, requirementTypes), retrieve, estimate,
                 new PriceHandler(pricing), new AmbiguityCheckHandler(new AmbiguityDetector(mapper)),
                 new GenerateHandler(failing, prompts, documentFactory, properties), new ComposeHandler(), recorder);
         assertThatThrownBy(() -> failingPipeline.run(context))
@@ -172,7 +178,7 @@ class AgentPipelineIntegrationTests {
         AgentExecution execution = executions.findByBriefIdOrderByIdAsc(context.getBrief().getId()).get(0);
         assertThat(execution.getStatus()).isEqualTo(ExecutionStatus.FAILED);
         List<AgentStep> timeline = steps.findByExecutionIdOrderByStepOrderAsc(execution.getId());
-        assertThat(timeline).hasSize(failingTask == LlmTask.CLASSIFY ? 1 : 6);
+        assertThat(timeline).hasSize(failingTask == LlmTask.CLASSIFY ? 1 : 7);
         AgentStep failed = timeline.get(timeline.size() - 1);
         assertThat(failed.getStatus()).isEqualTo(StepStatus.FAILED);
         assertThat(failed.getHandler()).isEqualTo(failingTask == LlmTask.CLASSIFY ? "Classify" : "Generate");

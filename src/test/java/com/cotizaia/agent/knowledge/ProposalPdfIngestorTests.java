@@ -33,7 +33,7 @@ class ProposalPdfIngestorTests {
         List<String> pages = new PdfBriefReader().readPages(
                 Files.readAllBytes(Path.of("seed/pdf/train/P08-propuesta.pdf")));
         IngestionSource source = new IngestionSource(1L, "P08-propuesta.pdf",
-                com.cotizaia.domain.KnowledgeDocumentKind.PROPOSAL_PDF, pages, null, PastItemExtractorTests.CATALOG);
+                com.cotizaia.domain.KnowledgeDocumentKind.PROPOSAL_PDF, pages, null, PastItemExtractorTests.CATALOG, List.of());
 
         List<ChunkDraft> drafts = new ProposalPdfChunker(extractor).chunk(source);
 
