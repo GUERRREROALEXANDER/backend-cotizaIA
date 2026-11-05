@@ -56,6 +56,14 @@ public class ExtractedRequirement {
     @Column(nullable = false, precision = 5, scale = 4)
     private BigDecimal confidence;
 
+    /** Enum name from the pipeline's estimation strategy, stored in plaintext for querying. */
+    @Column(name = "estimate_source", length = 10)
+    private String estimateSource;
+
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(name = "estimate_citations")
+    private String citations;
+
     @Column(name = "ambiguity_flag", nullable = false)
     private boolean ambiguityFlag;
 
@@ -123,6 +131,22 @@ public class ExtractedRequirement {
 
     public BigDecimal getConfidence() {
         return confidence;
+    }
+
+    public String getEstimateSource() {
+        return estimateSource;
+    }
+
+    public void setEstimateSource(String estimateSource) {
+        this.estimateSource = estimateSource;
+    }
+
+    public String getCitations() {
+        return citations;
+    }
+
+    public void setCitations(String citations) {
+        this.citations = citations;
     }
 
     public boolean isAmbiguityFlag() {

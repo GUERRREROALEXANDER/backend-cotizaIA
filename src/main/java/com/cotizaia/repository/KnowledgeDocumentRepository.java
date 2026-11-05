@@ -11,4 +11,6 @@ public interface KnowledgeDocumentRepository extends JpaRepository<KnowledgeDocu
     List<KnowledgeDocument> findByAgencyIdOrderByIdAsc(Long agencyId);
 
     java.util.Optional<KnowledgeDocument> findByIdAndAgencyId(Long id, Long agencyId);
+
+    java.util.List<KnowledgeDocument> findByAgencyIdAndSourceProposalId(Long agencyId, Long sourceProposalId);
 }

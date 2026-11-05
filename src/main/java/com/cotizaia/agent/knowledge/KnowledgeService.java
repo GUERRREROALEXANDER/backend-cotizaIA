@@ -53,7 +53,7 @@ public class KnowledgeService {
                 .stream().map(RequirementType::getName).toList();
         String documentName = (name == null || name.isBlank()) ? "document.pdf" : name;
         IngestionSource source = new IngestionSource(agencyId, documentName, KnowledgeDocumentKind.PROPOSAL_PDF,
-                pages, null, catalogNames);
+                pages, null, catalogNames, List.of());
         return ingestor.ingest(source);
     }
 

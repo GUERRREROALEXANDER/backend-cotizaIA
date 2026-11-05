@@ -42,6 +42,7 @@ class RetrievalEstimationTests {
 
     @Test
     void roundsCitationSimilarityToThreeDecimals() {
+        properties.setMinSimilarity(0.1);
         Estimate estimate = strategy.estimate(draftWith(hit(1, 0.123456, "10"), hit(2, 0.98765, "12")))
                 .orElseThrow();
         assertThat(estimate.citations()).extracting(Citation::similarity).containsExactly(0.988, 0.123);

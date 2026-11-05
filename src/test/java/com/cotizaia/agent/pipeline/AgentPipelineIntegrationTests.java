@@ -97,10 +97,10 @@ class AgentPipelineIntegrationTests {
     private PipelineProperties properties;
 
     @Autowired
-    private RetrieveHandler retrieve;
+    private com.cotizaia.agent.knowledge.PastItemRetriever pastItems;
 
     @Autowired
-    private EstimateHandler estimate;
+    private RetrievalProperties retrievalProperties;
 
     @Test
     void restaurantProducesFlaggedDraftAndThreeDocuments() throws Exception {
@@ -111,7 +111,8 @@ class AgentPipelineIntegrationTests {
         assertThat(run.execution().getStatus()).isEqualTo(ExecutionStatus.SUCCEEDED);
         assertThat(run.result()).isSameAs(context);
         assertThat(timeline).extracting(AgentStep::getHandler).containsExactlyElementsOf(pipeline.handlerNames());
-        assertThat(timeline.get(4).getOutputSummary()).startsWith("[FLAG]");
+        // Classify, Extract, Retrieve, Estimate, Price, AmbiguityCheck(5), Generate, Compose
+        assertThat(timeline.get(5).getOutputSummary()).startsWith("[FLAG]");
         assertThat(context.getDraft().requirements()).hasSize(3);
         assertThat(context.getDraft().requirements()).extracting(draft -> draft.getRequirementType().getName())
                 .containsExactly("Diseno responsive", "Menu digital", "Sistema de reservas");
@@ -131,15 +132,15 @@ class AgentPipelineIntegrationTests {
     }
 
     @Test
-    void vagueBriefHaltsButCommitsSevenSteps() {
+    void vagueBriefHaltsButCommitsEightSteps() {
         PipelineContext context = context("hola, necesito ayuda con algo");
         AgentRun run = pipeline.run(context);
         List<AgentStep> timeline = steps.findByExecutionIdOrderByStepOrderAsc(run.execution().getId());
         assertThat(run.execution().getStatus()).isEqualTo(ExecutionStatus.SUCCEEDED);
-        assertThat(timeline).hasSize(7);
-        assertThat(timeline.get(4).getOutputSummary()).startsWith("[HALT]");
-        assertThat(timeline.get(5).getStatus()).isEqualTo(StepStatus.SKIPPED);
+        assertThat(timeline).hasSize(8);
+        assertThat(timeline.get(5).getOutputSummary()).startsWith("[HALT]");
         assertThat(timeline.get(6).getStatus()).isEqualTo(StepStatus.SKIPPED);
+        assertThat(timeline.get(7).getStatus()).isEqualTo(StepStatus.SKIPPED);
         assertThat(context.getFindings()).extracting(AmbiguityFinding::code)
                 .contains("PROJECT_TYPE_UNKNOWN", "NO_SCOPE");
         assertThat(context.getDocuments()).isEmpty();
@@ -170,7 +171,9 @@ class AgentPipelineIntegrationTests {
         PromptBuilder prompts = new PromptBuilder();
         ObjectMapper mapper = new ObjectMapper();
         AgentPipeline failingPipeline = new AgentPipeline(new ClassifyHandler(failing, prompts, mapper),
-                new ExtractHandler(failing, prompts, mapper, requirementTypes), retrieve, estimate,
+                new ExtractHandler(failing, prompts, mapper, requirementTypes),
+                new RetrieveHandler(pastItems, new EvidenceQueryBuilder(), retrievalProperties),
+                new EstimateHandler(properties),
                 new PriceHandler(pricing), new AmbiguityCheckHandler(new AmbiguityDetector(mapper)),
                 new GenerateHandler(failing, prompts, documentFactory, properties), new ComposeHandler(), recorder);
         assertThatThrownBy(() -> failingPipeline.run(context))

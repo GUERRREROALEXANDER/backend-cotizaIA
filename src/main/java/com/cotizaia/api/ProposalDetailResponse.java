@@ -1,5 +1,8 @@
 package com.cotizaia.api;
 
+import com.cotizaia.agent.pipeline.Citation;
+import com.cotizaia.agent.pipeline.EstimateSource;
+import com.cotizaia.domain.ExtractedRequirement;
 import com.cotizaia.domain.Payment;
 import com.cotizaia.domain.Phase;
 import com.cotizaia.domain.Proposal;
@@ -37,13 +40,18 @@ public record ProposalDetailResponse(Long id, Long briefId, ProposalStatus statu
                 DepositResponse.from(detail.deposit()));
     }
 
-    /** One priced requirement with its current reviewed hours. */
-    public record ItemResponse(Long id, Long requirementId, String description, BigDecimal hours,
-            BigDecimal unitPrice, BigDecimal lineTotal) {
+    /** One priced requirement with its current reviewed hours and estimation provenance. */
+    public record ItemResponse(Long id, Long requirementId, String description, String requirementType,
+            EstimateSource estimateSource, List<Citation> citations, BigDecimal hours, BigDecimal unitPrice,
+            BigDecimal lineTotal) {
 
         public static ItemResponse from(QuotedItem item) {
-            return new ItemResponse(item.getId(), item.getRequirement().getId(),
-                    item.getRequirement().getDescription(), item.getHours(), item.getUnitPrice(), item.getLineTotal());
+            ExtractedRequirement requirement = item.getRequirement();
+            return new ItemResponse(item.getId(), requirement.getId(), requirement.getDescription(),
+                    requirement.getRequirementType().getName(),
+                    EstimateSource.fromStored(requirement.getEstimateSource()),
+                    Citation.fromJson(requirement.getCitations()), item.getHours(), item.getUnitPrice(),
+                    item.getLineTotal());
         }
     }
 

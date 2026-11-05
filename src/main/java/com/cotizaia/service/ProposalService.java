@@ -78,7 +78,10 @@ public class ProposalService {
     }
 
     private Detail detail(Proposal proposal) {
-        proposal.getItems().forEach(item -> Hibernate.initialize(item.getRequirement()));
+        proposal.getItems().forEach(item -> {
+            Hibernate.initialize(item.getRequirement());
+            Hibernate.initialize(item.getRequirement().getRequirementType());
+        });
         // The getters return unmodifiable views, on which Hibernate.initialize() is a no-op; size() reaches the
         // underlying persistent collection and loads it inside this transaction.
         proposal.getAppliedExtras().size();

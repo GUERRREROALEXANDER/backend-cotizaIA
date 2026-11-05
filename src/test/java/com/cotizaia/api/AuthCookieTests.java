@@ -28,7 +28,7 @@ import org.springframework.test.web.servlet.MvcResult;
 @SpringBootTest
 @ActiveProfiles("test")
 @AutoConfigureMockMvc
-class AuthCookieTests {
+public class AuthCookieTests {
 
     @Autowired
     private MockMvc mockMvc;
@@ -162,7 +162,7 @@ class AuthCookieTests {
     }
 
     /** Value of a cookie set by the response, read from the raw Set-Cookie headers. */
-    static String cookie(MvcResult result, String name) {
+    public static String cookie(MvcResult result, String name) {
         String header = setCookieHeader(result, name);
         String pair = header.split(";", 2)[0];
         return pair.substring(pair.indexOf('=') + 1);
