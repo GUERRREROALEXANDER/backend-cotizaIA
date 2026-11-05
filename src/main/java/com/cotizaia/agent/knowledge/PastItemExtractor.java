@@ -121,7 +121,9 @@ public class PastItemExtractor {
             if (node.isNumber()) {
                 return node.decimalValue();
             }
-            return new BigDecimal(node.asText().trim());
+            // Real models sometimes answer "50 h" instead of 50: keep the leading number, grounding still applies.
+            java.util.regex.Matcher number = Pattern.compile("^\\s*(\\d+(?:[.,]\\d+)?)").matcher(node.asText());
+            return number.find() ? new BigDecimal(number.group(1).replace(',', '.')) : null;
         } catch (Exception exception) {
             return null;
         }

@@ -92,6 +92,23 @@ class PastItemExtractorTests {
         });
     }
 
+    @Test
+    void acceptsHoursWrittenAsTextLikeTheRealModelSometimesDoes() {
+        LlmClient model = fixed("{\"items\":[{\"requirementType\":\"Tienda en linea\","
+                + "\"description\":\"Tienda con 150 productos\",\"hours\":\"50 h\"}]}");
+        PastItemExtractor.Result result = new PastItemExtractor(model, new PromptBuilder(), mapper)
+                .extract(List.of("Tienda en linea\nTienda con 150 productos\n50 h $4.750.000 COP"), CATALOG);
+        assertThat(result.items()).singleElement().satisfies(item ->
+                assertThat(item.hours()).isEqualByComparingTo("50"));
+    }
+
+    @Test
+    void thePromptStatesTheTaskInsteadOfInvitingAFullCatalogDump() {
+        LlmRequest request = new PromptBuilder().extractItems("pagina", CATALOG);
+        assertThat(request.userPrompt()).contains("Do not list catalog entries that are not on the page")
+                .doesNotContain("\"hours\":0}");
+    }
+
     private LlmClient fixed(String content) {
         return new LlmClient() {
             @Override
