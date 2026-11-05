@@ -1,6 +1,8 @@
 package com.cotizaia.domain;
 
+import com.cotizaia.crypto.EncryptedStringConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -32,12 +34,18 @@ public class Client {
     @JoinColumn(name = "agency_id", nullable = false)
     private Agency agency;
 
+    @Convert(converter = EncryptedStringConverter.class)
     @Column(nullable = false)
     private String name;
 
+    @Convert(converter = EncryptedStringConverter.class)
     @Column
     private String email;
 
+    @Column(name = "email_hash", length = 64)
+    private String emailHash;
+
+    @Convert(converter = EncryptedStringConverter.class)
     @Column
     private String company;
 
@@ -86,6 +94,14 @@ public class Client {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getEmailHash() {
+        return emailHash;
+    }
+
+    public void setEmailHash(String emailHash) {
+        this.emailHash = emailHash;
     }
 
     public String getCompany() {

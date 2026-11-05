@@ -1,6 +1,8 @@
 package com.cotizaia.domain;
 
+import com.cotizaia.crypto.EncryptedStringConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -44,6 +46,7 @@ public class ExtractedRequirement {
     @JoinColumn(name = "requirement_type_id", nullable = false)
     private RequirementType requirementType;
 
+    @Convert(converter = EncryptedStringConverter.class)
     @Column(nullable = false, length = 1000)
     private String description;
 

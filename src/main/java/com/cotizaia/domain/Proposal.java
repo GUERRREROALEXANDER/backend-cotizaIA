@@ -6,7 +6,9 @@ import com.cotizaia.domain.state.ProposalState;
 import com.cotizaia.domain.state.ProposalStates;
 import com.cotizaia.pricing.PricingModel;
 import jakarta.persistence.CascadeType;
+import com.cotizaia.crypto.EncryptedStringConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -87,12 +89,15 @@ public class Proposal {
     @Column(name = "valid_until")
     private Instant validUntil;
 
+    @Convert(converter = EncryptedStringConverter.class)
     @Column
     private String terms;
 
+    @Convert(converter = EncryptedStringConverter.class)
     @Column
     private String schedule;
 
+    @Convert(converter = EncryptedStringConverter.class)
     @Column
     private String extras;
 

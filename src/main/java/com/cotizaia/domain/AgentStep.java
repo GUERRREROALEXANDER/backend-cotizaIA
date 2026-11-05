@@ -1,6 +1,8 @@
 package com.cotizaia.domain;
 
+import com.cotizaia.crypto.EncryptedStringConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -47,9 +49,11 @@ public class AgentStep {
     @Column(name = "step_order", nullable = false)
     private int stepOrder;
 
+    @Convert(converter = EncryptedStringConverter.class)
     @Column(name = "input_summary", length = 1000)
     private String inputSummary;
 
+    @Convert(converter = EncryptedStringConverter.class)
     @Column(name = "output_summary", length = 1000)
     private String outputSummary;
 

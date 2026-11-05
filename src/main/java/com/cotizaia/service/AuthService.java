@@ -4,6 +4,7 @@ import com.cotizaia.domain.Agency;
 import com.cotizaia.domain.AppUser;
 import com.cotizaia.domain.UserRole;
 import com.cotizaia.repository.AgencyRepository;
+import com.cotizaia.crypto.BlindIndex;
 import com.cotizaia.repository.AppUserRepository;
 import java.util.Locale;
 import java.util.UUID;
@@ -27,14 +28,17 @@ public class AuthService {
 
     private final JwtTokenService tokens;
 
+    private final BlindIndex blindIndex;
+
     private final String dummyHash;
 
     public AuthService(AgencyRepository agencies, AppUserRepository users,
-            PasswordEncoder passwords, JwtTokenService tokens) {
+            PasswordEncoder passwords, JwtTokenService tokens, BlindIndex blindIndex) {
         this.agencies = agencies;
         this.users = users;
         this.passwords = passwords;
         this.tokens = tokens;
+        this.blindIndex = blindIndex;
         this.dummyHash = passwords.encode(UUID.randomUUID().toString());
     }
 
@@ -50,6 +54,8 @@ public class AuthService {
         Agency agency = new Agency(agencyName);
         AppUser owner = new AppUser(agency, ownerFullName, loginEmail, UserRole.OWNER);
         owner.assignCredentials(loginEmail, passwords.encode(rawPassword));
+        owner.setEmailHash(blindIndex.hash(owner.getEmail()));
+        owner.setLoginEmailHash(blindIndex.hash(owner.getLoginEmail()));
         agency.addUser(owner);
         agencies.saveAndFlush(agency);
         return new RegistrationResult(agency.getId(), owner.getId(), owner.getRole().name(), tokens.issue(owner));

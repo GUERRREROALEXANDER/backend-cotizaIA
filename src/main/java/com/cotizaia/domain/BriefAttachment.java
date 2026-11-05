@@ -1,6 +1,9 @@
 package com.cotizaia.domain;
 
+import com.cotizaia.crypto.EncryptedBytesConverter;
+import com.cotizaia.crypto.EncryptedStringConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -29,6 +32,7 @@ public class BriefAttachment {
     @JoinColumn(name = "brief_id", nullable = false, unique = true)
     private Brief brief;
 
+    @Convert(converter = EncryptedStringConverter.class)
     @Column(name = "file_name", nullable = false, length = 255)
     private String fileName;
 
@@ -41,6 +45,7 @@ public class BriefAttachment {
     @Column(name = "page_count", nullable = false)
     private int pageCount;
 
+    @Convert(converter = EncryptedBytesConverter.class)
     @Column(nullable = false, columnDefinition = "BYTEA")
     private byte[] content;
 

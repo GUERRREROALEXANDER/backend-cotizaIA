@@ -1,6 +1,8 @@
 package com.cotizaia.domain;
 
+import com.cotizaia.crypto.EncryptedStringConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -40,9 +42,11 @@ public class Brief {
     @Column(name = "source", nullable = false, length = 20)
     private BriefChannel source;
 
+    @Convert(converter = EncryptedStringConverter.class)
     @Column(name = "raw_text", nullable = false)
     private String rawText;
 
+    @Convert(converter = EncryptedStringConverter.class)
     @Column(name = "raw_payload", nullable = false)
     private String rawPayload;
 

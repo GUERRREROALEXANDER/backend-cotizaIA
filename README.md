@@ -185,6 +185,10 @@ Controllers map one resource each: `RoleController` owns `/api/roles/**` (includ
 
 5. **PDFs:** `GET /api/proposals/{id}/documents/{type}` returns `application/pdf` with `Content-Disposition` (exposed by CORS).
 
+## Security
+
+Encryption at rest protects agency and client content: columns listed in the spec (agency names, user full names/emails, client names/emails/companies, brief raw text/payload, attachments, questions, requirements, agent step summaries, proposal terms/schedule/extras, proposal document bytes, notification payloads) are encrypted with AES-256-GCM using a key supplied via `DATA_ENCRYPTION_KEY` (no default key anywhere). Lookups on encrypted email columns go through a keyed HMAC blind index (`BLIND_INDEX_KEY`). Plaintext by design: ids, foreign keys, enums/statuses, dates, hours, amounts (SQL aggregation for analytics and pricing), catalog/role/category names (agency configuration, looked up by name), contract clause templates (same text for every client), file sizes, content types.
+
 ## Database
 
 - Flyway owns the schema (`src/main/resources/db/migration`); Hibernate runs `ddl-auto: validate`, so the app refuses to start against an out-of-date schema.

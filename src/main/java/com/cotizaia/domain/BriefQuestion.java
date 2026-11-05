@@ -1,6 +1,8 @@
 package com.cotizaia.domain;
 
+import com.cotizaia.crypto.EncryptedStringConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -34,6 +36,7 @@ public class BriefQuestion {
     @Column(nullable = false, length = 60)
     private String code;
 
+    @Convert(converter = EncryptedStringConverter.class)
     @Column(nullable = false, length = 1000)
     private String question;
 
@@ -44,6 +47,7 @@ public class BriefQuestion {
     @Column(nullable = false, length = 20)
     private QuestionStatus status;
 
+    @Convert(converter = EncryptedStringConverter.class)
     @Column(columnDefinition = "TEXT")
     private String answer;
 
