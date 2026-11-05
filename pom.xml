@@ -21,6 +21,9 @@
         <java.version>17</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <openpdf.version>2.0.5</openpdf.version>
+        <!-- Byte Buddy 1.14 (Boot 3.3 default) cannot instrument classes on JDK 21+ runtimes newer than it knows;
+             1.17 lets Mockito run the suite on any JDK from 17 to 25. -->
+        <byte-buddy.version>1.17.7</byte-buddy.version>
     </properties>
 
     <dependencies>
