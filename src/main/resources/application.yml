@@ -55,7 +55,8 @@ llm:
 security:
   jwt:
     secret: ${JWT_SECRET:}
-    ttl: ${JWT_TTL:PT8H}
+    ttl: ${JWT_TTL:PT15M}
+    refresh-ttl: ${JWT_REFRESH_TTL:P7D}
     issuer: cotizaia
 
 app:
