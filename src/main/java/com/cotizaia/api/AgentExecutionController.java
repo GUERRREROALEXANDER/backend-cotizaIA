@@ -12,8 +12,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Run-log API (project.txt section 2: "Ver el pipeline del agente ejecutarse en
- * vivo"). GET by id returns the execution with its steps already ordered, which
+ * Run-log API (project.txt section 2: "Watch the agent pipeline run
+ * live"). GET by id returns the execution with its steps already ordered, which
  * is exactly what the live view polls.
  */
 @RestController

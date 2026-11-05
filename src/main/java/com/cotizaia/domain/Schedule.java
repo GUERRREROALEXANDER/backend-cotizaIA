@@ -27,8 +27,8 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Smart schedule of a {@link Proposal} (project.txt section 5 "Cronograma
- * inteligente"; section 9 schema: Propuesta -> Cronograma -> Fase -> Dependencia).
+ * Smart schedule of a {@link Proposal} (project.txt section 5 "Smart
+ * schedule"; section 9 schema: Proposal -> Schedule -> Phase -> Dependency).
  *
  * <p>Given the proposal's estimated hours, each {@link Phase} consumes a share
  * and gets a duration in whole weeks; the phases are then placed on a week

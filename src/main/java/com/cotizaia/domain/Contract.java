@@ -21,8 +21,8 @@ import java.util.List;
 
 /**
  * Aggregate root for the contract behind a {@link Proposal} (project.txt
- * section 4 acceptance flow; section 9 schema: Propuesta -> Contrato ->
- * Clausula).
+ * section 4 acceptance flow; section 9 schema: Proposal -> Contract ->
+ * Clause).
  *
  * <p>Design patterns:
  * <ul>

@@ -14,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Application wrapper around the {@link Schedule} aggregate
- * (project.txt section 5 "Cronograma inteligente"). It keeps the methods that
+ * (project.txt section 5 "Smart schedule"). It keeps the methods that
  * need repository access out of the domain: the aggregate itself owns the
  * cascade maths and the cycle rule, while this service loads the proposal,
  * delegates, and persists.

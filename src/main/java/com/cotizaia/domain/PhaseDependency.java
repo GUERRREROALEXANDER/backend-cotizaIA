@@ -15,8 +15,8 @@ import jakarta.persistence.Table;
  * until {@code dependsOnPhase} ends. It is a composed child of the dependent
  * {@link Phase}, so it only exists through {@link Schedule#addDependency}.
  *
- * <p>Keeping the edge as a row (project.txt section 9: Cronograma -> Fase ->
- * Dependencia) is what lets the schedule re-place phases in cascade after an
+ * <p>Keeping the edge as a row (project.txt section 9: Schedule -> Phase ->
+ * Dependency) is what lets the schedule re-place phases in cascade after an
  * hour edit. The {@link Schedule} aggregate validates acyclicity and
  * self-dependency before this row is built, because SQL cannot express those
  * constraints portably.

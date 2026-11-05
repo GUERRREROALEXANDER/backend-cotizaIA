@@ -4,9 +4,9 @@ import java.math.BigDecimal;
 
 /**
  * Component of the Decorator pattern for proposal pricing (project.txt section
- * 6 pattern 6: "Cotización base -> UrgenciaDecorator -> DescuentoDecorator ->
- * GarantiaExtendidaDecorator ... sin crear clases
- * CotizacionConUrgenciaYDescuentoYGarantia").
+ * 6 pattern 6: "Base quote -> UrgencyDecorator -> DiscountDecorator ->
+ * ExtendedWarrantyDecorator ... without creating classes such as
+ * QuoteWithUrgencyAndDiscountAndWarranty").
  *
  * <p>A priced proposal exposes two amounts:
  * <ul>

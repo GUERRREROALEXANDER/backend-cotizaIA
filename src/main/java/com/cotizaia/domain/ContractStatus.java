@@ -2,7 +2,7 @@ package com.cotizaia.domain;
 
 /**
  * Lifecycle of a {@link Contract} (project.txt section 4 acceptance flow;
- * section 9 schema: Propuesta -> Contrato). Stored in {@code contracts.status}
+ * section 9 schema: Proposal -> Contract). Stored in {@code contracts.status}
  * and constrained by {@code ck_contracts_status}.
  *
  * <p>Design pattern - <b>State</b>: each state owns the transitions it allows,

@@ -19,7 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Coordinates an end-to-end quotation (project.txt sections 2 and 6).
- * README's {@code CotizacionFacade.procesarBrief()} maps to {@link #processBrief(Long)}.
+ * The original plan's Spanish-named {@code CotizacionFacade.procesarBrief()} maps to
+ * {@link #processBrief(Long)}.
  *
  * <p>Design pattern - <b>Facade</b>: this entry point hides intake through {@link BriefService},
  * classification, extraction, estimation, pricing and generation through {@link AgentPipeline},

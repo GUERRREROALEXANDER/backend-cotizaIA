@@ -16,8 +16,8 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * One phase of a {@link Schedule} (project.txt section 5 "Cronograma
- * inteligente": Design / Development / Integration / QA; section 9: Fase).
+ * One phase of a {@link Schedule} (project.txt section 5 "Smart
+ * schedule": Design / Development / Integration / QA; section 9: Phase).
  * It holds the fraction of project hours it consumes and the duration and
  * timeline placement the schedule derives from it.
  *
