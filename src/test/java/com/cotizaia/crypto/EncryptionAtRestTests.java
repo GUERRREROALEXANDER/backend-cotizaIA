@@ -62,7 +62,7 @@ class EncryptionAtRestTests {
                         .content("{\"agencyName\":\"Agencia " + marker + "\",\"ownerFullName\":\"Owner " + marker
                                 + "\",\"email\":\"" + ownerEmail + "\",\"password\":\"secret123\"}"))
                 .andExpect(status().isCreated()).andReturn();
-        String token = JsonPath.read(registered.getResponse().getContentAsString(), "$.token");
+        String token = accessCookie(registered);
 
         long clientId = readLong(call(post("/api/clients"), token, "{\"name\":\"Cliente " + marker
                 + "\",\"email\":\"" + marker + "@client.co\",\"company\":\"Empresa " + marker + "\"}",
@@ -174,6 +174,14 @@ class EncryptionAtRestTests {
             }
             default -> rows.getString(column);
         };
+    }
+
+    /** The access token now travels only in the HttpOnly cookie (spec 02); API clients send it as a Bearer header. */
+    private String accessCookie(MvcResult result) {
+        String header = result.getResponse().getHeaders("Set-Cookie").stream()
+                .filter(value -> value.startsWith("cz_access=")).findFirst()
+                .orElseThrow(() -> new AssertionError("no cz_access cookie"));
+        return header.split(";", 2)[0].substring("cz_access=".length());
     }
 
     private ResultActions call(MockHttpServletRequestBuilder request, String token, String json,

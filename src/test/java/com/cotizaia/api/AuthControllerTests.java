@@ -49,8 +49,9 @@ class AuthControllerTests {
         MvcResult result = register(EMAIL, PASSWORD);
         String body = result.getResponse().getContentAsString();
         JsonNode response = mapper.readTree(body);
-        assertThat(response.path("token").asText()).isNotBlank();
-        assertThat(response.path("tokenType").asText()).isEqualTo("Bearer");
+        assertThat(response.has("token")).as("no credential in a JS-readable body").isFalse();
+        assertThat(response.has("tokenType")).isFalse();
+        assertThat(AuthCookieTests.cookie(result, "cz_access")).isNotBlank();
         assertThat(response.path("role").asText()).isEqualTo("OWNER");
         assertThat(response.path("expiresAt").asText()).isNotBlank();
         assertThat(body).doesNotContain(PASSWORD, "passwordHash", "password_hash");
@@ -88,7 +89,7 @@ class AuthControllerTests {
                 .andExpect(status().isOk()).andReturn();
         String body = login.getResponse().getContentAsString();
         assertThat(body).doesNotContain(PASSWORD);
-        String token = mapper.readTree(body).path("token").asText();
+        String token = AuthCookieTests.cookie(login, "cz_access");
         mockMvc.perform(get("/api/auth/me").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.agencyId").value(registered.path("agencyId").asLong()))
