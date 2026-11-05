@@ -104,5 +104,16 @@ a line starting with `Total`.
 - `GET /api/knowledge/search?q=&type=&k=` -> `[{chunkId, documentId, documentName, page, text, requirementType, hours, similarity}]`;
   blank `q` or `k` outside 1..20 -> 400
 
+## Part D - Retry for embeddings (added after the first real eval hit Voyage's free limit: 3 RPM, 10K TPM)
+Test: `src/test/java/com/cotizaia/agent/embedding/RetryEmbeddingClientTests.java` + full suite.
+- `RetryEmbeddingClient` (**Decorator**, same interface): ctor `(EmbeddingClient delegate, EmbeddingProperties.Retry retry, Sleeper sleeper)`
+  (reuse `com.cotizaia.agent.llm.Sleeper`). Retries only `EmbeddingException.isRetryable()`; delay before retry n
+  = `min(initialBackoff * multiplier^(n-1), maxBackoff)`; after `maxAttempts` calls rethrows the last exception.
+  Interrupted sleep -> non-retryable `EmbeddingException`, interrupt flag restored. `provider()` = delegate's.
+- `EmbeddingProperties.Retry` (JavaBean, `embedding.retry.*`): `maxAttempts` 5, `initialBackoff` 5s, `multiplier` 2.0,
+  `maxBackoff` 60s.
+- `CachingEmbeddingClient.delegate()` accessor. `LlmClientConfiguration.embeddingClient(...)` (public method, as today):
+  stub family -> `Caching(stub)`; network families -> `Caching(Retry(raw))`.
+
 ## Out of scope (all parts)
 Pipeline handlers, estimation, the frontend, auth/crypto internals. Never edit `src/test/`.
