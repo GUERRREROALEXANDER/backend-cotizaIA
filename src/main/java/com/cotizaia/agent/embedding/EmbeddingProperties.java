@@ -11,6 +11,7 @@ public class EmbeddingProperties {
     private int dimensions = 1024;
     private int batchSize = 64;
     private int cacheSize = 10000;
+    private Retry retry = new Retry();
 
     public Voyage getVoyage() {
         return voyage;
@@ -50,6 +51,14 @@ public class EmbeddingProperties {
 
     public void setCacheSize(int cacheSize) {
         this.cacheSize = cacheSize;
+    }
+
+    public Retry getRetry() {
+        return retry;
+    }
+
+    public void setRetry(Retry retry) {
+        this.retry = retry;
     }
 
     public static class Voyage {
@@ -100,6 +109,45 @@ public class EmbeddingProperties {
 
         public void setModel(String model) {
             this.model = model;
+        }
+    }
+
+    public static class Retry {
+        private int maxAttempts = 5;
+        private java.time.Duration initialBackoff = java.time.Duration.ofSeconds(5);
+        private double multiplier = 2.0;
+        private java.time.Duration maxBackoff = java.time.Duration.ofSeconds(60);
+
+        public int getMaxAttempts() {
+            return maxAttempts;
+        }
+
+        public void setMaxAttempts(int maxAttempts) {
+            this.maxAttempts = maxAttempts;
+        }
+
+        public java.time.Duration getInitialBackoff() {
+            return initialBackoff;
+        }
+
+        public void setInitialBackoff(java.time.Duration initialBackoff) {
+            this.initialBackoff = initialBackoff;
+        }
+
+        public double getMultiplier() {
+            return multiplier;
+        }
+
+        public void setMultiplier(double multiplier) {
+            this.multiplier = multiplier;
+        }
+
+        public java.time.Duration getMaxBackoff() {
+            return maxBackoff;
+        }
+
+        public void setMaxBackoff(java.time.Duration maxBackoff) {
+            this.maxBackoff = maxBackoff;
         }
     }
 }

@@ -6,7 +6,9 @@ import com.cotizaia.agent.embedding.CloudAiFactory;
 import com.cotizaia.agent.embedding.EmbeddingClient;
 import com.cotizaia.agent.embedding.EmbeddingProperties;
 import com.cotizaia.agent.embedding.OllamaAiFactory;
+import com.cotizaia.agent.embedding.RetryEmbeddingClient;
 import com.cotizaia.agent.embedding.StubAiFactory;
+import com.cotizaia.agent.embedding.StubEmbeddingClient;
 import java.util.Locale;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -38,7 +40,12 @@ public class LlmClientConfiguration {
     public EmbeddingClient embeddingClient(RestClient.Builder builder, LlmProperties properties,
             EmbeddingProperties embeddingProperties) {
         EmbeddingClient raw = factory(builder, properties, embeddingProperties).createEmbeddingClient();
-        return new CachingEmbeddingClient(raw, embeddingProperties.getCacheSize());
+        if (raw instanceof StubEmbeddingClient) {
+            return new CachingEmbeddingClient(raw, embeddingProperties.getCacheSize());
+        }
+        EmbeddingClient retrying =
+                new RetryEmbeddingClient(raw, embeddingProperties.getRetry(), duration -> Thread.sleep(duration.toMillis()));
+        return new CachingEmbeddingClient(retrying, embeddingProperties.getCacheSize());
     }
 
     /** Maps the configured provider value onto one factory, failing fast on unknown values. */

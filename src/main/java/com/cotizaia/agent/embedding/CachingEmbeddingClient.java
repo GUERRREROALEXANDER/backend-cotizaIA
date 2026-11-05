@@ -75,4 +75,8 @@ public class CachingEmbeddingClient implements EmbeddingClient {
     public String provider() {
         return delegate.provider();
     }
+
+    public EmbeddingClient delegate() {
+        return delegate;
+    }
 }
