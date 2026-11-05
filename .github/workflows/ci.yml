@@ -22,6 +22,9 @@ jobs:
           cache: maven
       - name: Test
         run: ./mvnw -B test
+      # PgVectorStoreTests skip themselves without Docker; in CI that would hide the only real-PostgreSQL run.
+      - name: Require the PostgreSQL + pgvector tests to have run
+        run: grep -q 'skipped="0"' target/surefire-reports/TEST-com.cotizaia.agent.knowledge.PgVectorStoreTests.xml
       - name: Upload test reports on failure
         if: failure()
         uses: actions/upload-artifact@v4

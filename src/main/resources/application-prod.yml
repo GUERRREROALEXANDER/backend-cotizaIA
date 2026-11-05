@@ -28,6 +28,11 @@ server:
 llm:
   provider: ${LLM_PROVIDER:groq}
 
+knowledge:
+  # Supabase Postgres ships the pgvector extension, enabled by vendor
+  # migration V24; the accelerated store replaces the portable scan.
+  vector-store: pgvector
+
 springdoc:
   swagger-ui:
     enabled: ${SWAGGER_ENABLED:true}

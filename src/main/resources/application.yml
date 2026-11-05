@@ -18,7 +18,7 @@ spring:
           time_zone: UTC
   flyway:
     enabled: true
-    locations: classpath:db/migration
+    locations: classpath:db/migration,classpath:db/vendor/{vendor}
   servlet:
     multipart:
       max-file-size: 10MB
@@ -63,6 +63,11 @@ embedding:
   ollama:
     base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
     model: ${OLLAMA_MODEL_EMBED:nomic-embed-text}
+
+knowledge:
+  # Where past-proposal embeddings live: portable exact scan (jdbc, default)
+  # or the pgvector index (see db/migration and db/vendor/{vendor}).
+  vector-store: ${KNOWLEDGE_VECTOR_STORE:jdbc}
 
 security:
   jwt:

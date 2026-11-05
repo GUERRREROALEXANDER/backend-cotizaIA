@@ -5,7 +5,9 @@
 #   ./mvnw spring-boot:run      # Flyway creates the schema on startup
 services:
   postgres:
-    image: postgres:16-alpine
+    # pgvector build of Postgres: same 16.x server plus the extension the
+    # vendor migration (db/vendor/postgresql/V24) needs for knowledge search.
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_DB: cotizaia
       POSTGRES_USER: cotizaia
