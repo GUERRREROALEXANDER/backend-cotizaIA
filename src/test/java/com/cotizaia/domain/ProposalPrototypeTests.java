@@ -76,7 +76,7 @@ class ProposalPrototypeTests {
     }
 
     private static Proposal negotiated() {
-        Proposal proposal = new Proposal.Builder().brief(BriefFixture.brief()).build();
+        Proposal proposal = new Proposal.Builder().brief(BriefFixture.brief()).status(ProposalStatus.IN_REVIEW).build();
         proposal.addItem(BriefFixture.requirement(), new BigDecimal("60"), new BigDecimal("50"));
         proposal.addItem(BriefFixture.requirement(), new BigDecimal("40"), new BigDecimal("50"));
         proposal.addExtra("URGENCY", new BigDecimal("0.25"), new BigDecimal("1250"));

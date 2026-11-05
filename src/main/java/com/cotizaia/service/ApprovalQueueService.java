@@ -1,10 +1,14 @@
 package com.cotizaia.service;
 
 import com.cotizaia.domain.Proposal;
+import com.cotizaia.domain.ProposalCommandRecord;
 import com.cotizaia.domain.ProposalStatus;
 import com.cotizaia.domain.QuotedItem;
+import com.cotizaia.domain.state.InvalidStateTransitionException;
 import com.cotizaia.domain.state.ProposalEvent;
 import com.cotizaia.repository.ProposalRepository;
+import com.cotizaia.service.command.AdjustHoursCommand;
+import com.cotizaia.service.command.CommandHistory;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -29,12 +33,16 @@ public class ApprovalQueueService {
 
     private final ProposalAcceptanceService acceptance;
 
+    private final CommandHistory commandHistory;
+
     public ApprovalQueueService(ProposalRepository proposals, DocumentService documents,
-            ProposalWorkflowService workflow, ProposalAcceptanceService acceptance) {
+            ProposalWorkflowService workflow, ProposalAcceptanceService acceptance,
+            CommandHistory commandHistory) {
         this.proposals = proposals;
         this.documents = documents;
         this.workflow = workflow;
         this.acceptance = acceptance;
+        this.commandHistory = commandHistory;
     }
 
     @Transactional(readOnly = true)
@@ -55,8 +63,43 @@ public class ApprovalQueueService {
         }
         QuotedItem item = proposal.getItems().stream().filter(candidate -> candidate.getId().equals(itemId))
                 .findFirst().orElseThrow(() -> new NoSuchElementException("Quoted item not found: " + itemId));
-        proposal.editHours(item, hours);
+        commandHistory.run(proposal,
+                new AdjustHoursCommand(item.getRequirement().getId(), item.getHours(), hours));
         return proposals.saveAndFlush(proposal);
+    }
+
+    public Proposal undo(Long agencyId, Long proposalId) {
+        Proposal proposal = get(agencyId, proposalId);
+        if (!proposal.getState().allowsQuoteEdits()) {
+            throw new InvalidStateTransitionException(proposal.getStatus(), null,
+                    ProposalStatus.IN_REVIEW, proposal.getState().allowedTransitions());
+        }
+        commandHistory.undoLast(proposal);
+        return proposals.saveAndFlush(proposal);
+    }
+
+    public List<ProposalCommandRecord> commands(Long agencyId, Long proposalId) {
+        get(agencyId, proposalId);
+        return commandHistory.list(proposalId);
+    }
+
+    /**
+     * Turns a negotiated offer into its next revision: the copy goes back to
+     * review and the original is expired through the normal lifecycle path, so
+     * history and observers record the move while the client's version stays
+     * frozen for audit.
+     */
+    public Proposal revise(Long agencyId, Long proposalId) {
+        Proposal original = get(agencyId, proposalId);
+        if (original.getStatus() != ProposalStatus.NEGOTIATING) {
+            throw new InvalidStateTransitionException(original.getStatus(), null,
+                    ProposalStatus.IN_REVIEW, original.getState().allowedTransitions());
+        }
+        Proposal revision = original.copy();
+        proposals.saveAndFlush(revision);
+        workflow.transition(proposalId, ProposalEvent.EXPIRE);
+        documents.generateFor(revision.getId(), null);
+        return revision;
     }
 
     public Proposal approve(Long agencyId, Long proposalId) {

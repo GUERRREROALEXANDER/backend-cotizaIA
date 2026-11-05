@@ -23,15 +23,17 @@ import java.util.Set;
  * Projects the loaded proposal review view (project.txt sections 2 and 5).
  * Explicit nested records expose business values without serializing JPA associations or PDF content.
  */
-public record ProposalDetailResponse(Long id, Long briefId, ProposalStatus status,
-        Set<ProposalStatus> allowedTransitions, BigDecimal subtotal, BigDecimal total, PricingModel pricingModel,
-        Instant approvedAt, List<ItemResponse> items, List<ExtraResponse> extras, ScheduleResponse schedule,
-        List<StatusChangeResponse> statusHistory, List<DocumentResponse> documents, DepositResponse deposit,
-        ProposalDraft draft) {
+public record ProposalDetailResponse(Long id, Long briefId, ProposalStatus status, int revisionNumber,
+        Long revisionOf, Set<ProposalStatus> allowedTransitions, BigDecimal subtotal, BigDecimal total,
+        PricingModel pricingModel, Instant approvedAt, List<ItemResponse> items, List<ExtraResponse> extras,
+        ScheduleResponse schedule, List<StatusChangeResponse> statusHistory, List<DocumentResponse> documents,
+        DepositResponse deposit, ProposalDraft draft) {
 
     public static ProposalDetailResponse from(Detail detail) {
         Proposal proposal = detail.proposal();
         return new ProposalDetailResponse(proposal.getId(), proposal.getBrief().getId(), proposal.getStatus(),
+                proposal.getRevisionNumber(),
+                proposal.getRevisionOf() == null ? null : proposal.getRevisionOf().getId(),
                 proposal.getState().allowedTransitions(), proposal.getSubtotal(), proposal.getTotal(),
                 proposal.getPricingModel(), proposal.getApprovedAt(),
                 proposal.getItems().stream().map(ItemResponse::from).toList(),

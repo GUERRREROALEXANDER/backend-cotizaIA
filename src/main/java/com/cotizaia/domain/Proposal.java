@@ -28,7 +28,9 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Aggregate root for a priced offer over a {@link Brief} (project.txt section 9
@@ -110,6 +112,15 @@ public class Proposal {
 
     @Column(name = "approved_at")
     private Instant approvedAt;
+
+    /** 1 for an original offer; each revision copies and increments it. */
+    @Column(name = "revision_number", nullable = false)
+    private int revisionNumber = 1;
+
+    /** The frozen proposal this one revises, or null for an original. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "revision_of_id")
+    private Proposal revisionOf;
 
     @OneToMany(mappedBy = "proposal", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<QuotedItem> items = new ArrayList<>();
@@ -249,6 +260,53 @@ public class Proposal {
 
     public Schedule getSchedulePlan() {
         return schedulePlan;
+    }
+
+    /**
+     * Prototype: a revision is a deep copy of this proposal. The original is
+     * never mutated, so the version the client already received stays frozen
+     * for audit while the agency reworks v2.
+     *
+     * <p>Every mutable child is rebuilt: new lines (same requirement, hours and
+     * unit price), new extras, and a new schedule with the same weekly capacity,
+     * phases and dependencies re-derived from the copied lines. The copy is
+     * unsaved and starts again in review, with no approval and an empty status
+     * history.
+     */
+    public Proposal copy() {
+        Proposal revision = new Proposal.Builder()
+                .brief(brief)
+                .status(ProposalStatus.IN_REVIEW)
+                .pricingModel(pricingModel)
+                .validUntil(validUntil)
+                .terms(terms)
+                .schedule(schedule)
+                .extras(extras)
+                .build();
+        for (QuotedItem item : items) {
+            revision.addItem(item.getRequirement(), item.getHours(), item.getUnitPrice());
+        }
+        for (ProposalExtra extra : appliedExtras) {
+            revision.addExtra(extra.getType(), extra.getPercentOrFixed(), extra.getAmount());
+        }
+        revision.draftedContent = draftedContent;
+        revision.revisionNumber = revisionNumber + 1;
+        revision.revisionOf = this;
+
+        if (schedulePlan != null) {
+            Schedule copied = revision.attachSchedule(schedulePlan.getHoursPerWeek());
+            Map<Phase, Phase> phaseCopies = new IdentityHashMap<>();
+            for (Phase phase : schedulePlan.getPhases()) {
+                phaseCopies.put(phase, copied.addPhase(phase.getName(), phase.getHoursShare()));
+            }
+            for (Phase phase : schedulePlan.getPhases()) {
+                for (PhaseDependency dependency : phase.getDependencies()) {
+                    copied.addDependency(phaseCopies.get(phase),
+                            phaseCopies.get(dependency.getDependsOnPhase()));
+                }
+            }
+        }
+        return revision;
     }
 
     /** Removes the previous quote before replacement and invalidates human approval. */
@@ -404,6 +462,15 @@ public class Proposal {
 
     public Instant getCreatedAt() {
         return createdAt;
+    }
+
+    public int getRevisionNumber() {
+        return revisionNumber;
+    }
+
+    /** The proposal this one revises, or {@code null} for an original offer. */
+    public Proposal getRevisionOf() {
+        return revisionOf;
     }
 
     /** Unmodifiable view: lines are appended through {@link #addItem}. */

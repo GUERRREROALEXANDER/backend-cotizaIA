@@ -2,6 +2,7 @@ package com.cotizaia.service;
 
 import com.cotizaia.domain.Payment;
 import com.cotizaia.domain.Proposal;
+import com.cotizaia.domain.ProposalCommandRecord;
 import com.cotizaia.domain.ProposalDocument;
 import com.cotizaia.domain.ProposalStatus;
 import com.cotizaia.repository.ProposalRepository;
@@ -55,6 +56,19 @@ public class ProposalService {
 
     public Detail adjustHours(Long agencyId, Long id, Long itemId, BigDecimal hours) {
         return detail(approval.adjustHours(agencyId, id, itemId, hours));
+    }
+
+    public Detail undo(Long agencyId, Long id) {
+        return detail(approval.undo(agencyId, id));
+    }
+
+    public Detail revise(Long agencyId, Long id) {
+        return detail(approval.revise(agencyId, id));
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProposalCommandRecord> commands(Long agencyId, Long id) {
+        return approval.commands(agencyId, id);
     }
 
     public Detail approve(Long agencyId, Long id) {

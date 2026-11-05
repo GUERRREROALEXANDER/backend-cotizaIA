@@ -16,7 +16,7 @@ public class StubLlmClient implements LlmClient {
             "MOBILE_APP", List.of("app", "aplicacion movil", "android", "ios"),
             "BRANDING", List.of("logo", "marca", "branding", "identidad"),
             "MARKETING", List.of("redes sociales", "marketing", "campana", "publicidad"),
-            "WEB_SITE", List.of("pagina", "web", "sitio", "landing"));
+            "WEB_SITE", List.of("pagina", "web", "sitio", "landing", "sistema de reservas"));
     private static final List<String> PRIORITY = List.of(
             "ECOMMERCE", "MOBILE_APP", "BRANDING", "MARKETING", "WEB_SITE");
 
