@@ -7,6 +7,7 @@ import com.cotizaia.repository.AgentStepRepository;
 import com.cotizaia.repository.BriefRepository;
 import java.util.List;
 import java.util.NoSuchElementException;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,6 +50,16 @@ public class AgentExecutionService {
 
     /** Execution with its ordered steps loaded in the same read transaction. */
     public record Timeline(AgentExecution execution, List<AgentStep> steps) {
+    }
+
+    /** Latest runs across the caller's agency, newest first, capped by {@code limit} in SQL. */
+    @Transactional(readOnly = true)
+    public List<Timeline> listLatest(Long agencyId, int limit) {
+        return agentExecutionRepository
+                .findByBriefClientAgencyIdOrderByIdDesc(agencyId, PageRequest.of(0, limit)).stream()
+                .map(execution -> new Timeline(execution,
+                        agentStepRepository.findByExecutionIdOrderByStepOrderAsc(execution.getId())))
+                .toList();
     }
 
     @Transactional(readOnly = true)

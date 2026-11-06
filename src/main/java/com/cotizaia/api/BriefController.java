@@ -10,9 +10,12 @@ import com.cotizaia.service.BriefUploadService.UploadResult;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -59,6 +62,13 @@ public class BriefController {
     public BriefResponse ingest(@Valid @RequestBody BriefIngestRequest request, CurrentUser user) {
         Brief brief = briefService.ingest(user.agencyId(), request.source(), request.clientId(), request.payload());
         return BriefResponse.from(brief);
+    }
+
+    @GetMapping
+    @Operation(summary = "List the caller's briefs, newest first")
+    public List<BriefResponse> list(
+            @RequestParam(defaultValue = "35") @Min(1) @Max(100) int limit, CurrentUser user) {
+        return briefService.list(user.agencyId(), limit).stream().map(BriefResponse::from).toList();
     }
 
     @GetMapping("/{id}")

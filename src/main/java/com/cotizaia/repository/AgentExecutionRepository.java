@@ -3,6 +3,7 @@ package com.cotizaia.repository;
 import com.cotizaia.domain.AgentExecution;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
@@ -12,6 +13,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface AgentExecutionRepository extends JpaRepository<AgentExecution, Long> {
 
     List<AgentExecution> findByBriefIdOrderByIdAsc(Long briefId);
+
+    /** Newest first across the caller's agency, paged in SQL. */
+    List<AgentExecution> findByBriefClientAgencyIdOrderByIdDesc(Long agencyId, Pageable pageable);
 
     Optional<AgentExecution> findByIdAndBriefClientAgencyId(Long id, Long agencyId);
 

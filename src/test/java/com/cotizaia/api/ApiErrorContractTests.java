@@ -50,9 +50,10 @@ class ApiErrorContractTests {
 
     @Test
     void missingRequiredParameterIsBadRequest() throws Exception {
-        mockMvc.perform(get("/api/executions").with(TestTokens.forAgency(1L)))
+        // /api/executions lost its required briefId in spec 09 (it now lists the latest runs); search needs q.
+        mockMvc.perform(get("/api/knowledge/search").with(TestTokens.forAgency(1L)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Missing required parameter 'briefId'"));
+                .andExpect(jsonPath("$.error").value("Missing required parameter 'q'"));
     }
 
     @Test
