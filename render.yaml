@@ -1,4 +1,4 @@
-# Render Blueprint: the Docker backend from this repo plus the Vite frontend as a static site.
+# Render Blueprint: the Docker backend from this repo (the frontend is on Vercel, see the note at the end).
 # Secrets use `sync: false`, so Render asks for them in the dashboard and they never live in git.
 services:
   - type: web
