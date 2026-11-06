@@ -1,4 +1,4 @@
-# Render Blueprint: the Docker backend from this repo plus the Vite frontend as a static site.
+# Render Blueprint: the Docker backend from this repo (the frontend is on Vercel, see the note at the end).
 # Secrets use `sync: false`, so Render asks for them in the dashboard and they never live in git.
 services:
   - type: web
@@ -33,39 +33,5 @@ services:
       - key: CORS_ALLOWED_ORIGINS
         sync: false
 
-  # Static sites are free and don't sleep. VITE_API_URL is read at build time,
-  # so redeploy the frontend after changing it.
-  - type: web
-    name: cotizaia-frontend
-    runtime: static
-    repo: https://github.com/GUERRREROALEXANDER/frontend-cotizaIA
-    branch: main
-    buildCommand: npm ci && npm run build
-    staticPublishPath: ./dist
-    autoDeploy: true
-    # The browser only talks to this origin: /api/* is proxied to the backend, so the session cookies stay
-    # first-party (SameSite=Strict) and no API URL is baked into the bundle. Replace the host if Render gave the
-    # backend a suffixed URL.
-    routes:
-      - type: rewrite
-        source: /api/*
-        destination: https://cotizaia-backend.onrender.com/api/*
-    headers:
-      - path: /*
-        name: Content-Security-Policy
-        value: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
-      - path: /*
-        name: Strict-Transport-Security
-        value: max-age=31536000; includeSubDomains
-      - path: /*
-        name: X-Content-Type-Options
-        value: nosniff
-      - path: /*
-        name: X-Frame-Options
-        value: DENY
-      - path: /*
-        name: Referrer-Policy
-        value: strict-origin-when-cross-origin
-      - path: /*
-        name: Permissions-Policy
-        value: camera=(), microphone=(), geolocation=(), payment=()
+  # The frontend is deployed on Vercel, not here: frontend-cotizaIA/vercel.json proxies /api/* to this service
+  # (same origin for the SameSite=Strict session cookies) and sends the CSP and security headers.

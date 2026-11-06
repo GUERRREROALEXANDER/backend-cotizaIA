@@ -38,7 +38,7 @@ agent MAE ≤ 0.70 × catalog MAE.
 | PDF | OpenPDF (generate), PDFBox (read) |
 | API docs | springdoc-openapi (off in production unless `SWAGGER_ENABLED=true`) |
 | CI | GitHub Actions: full suite, pgvector tests must not be skipped, gitleaks, OSV dependency scan |
-| Deploy | Docker → Render (free), Supabase (free) |
+| Deploy | Docker → Render (free), Supabase (free), frontend on Vercel |
 
 ## How the AI is used
 
@@ -188,8 +188,8 @@ or another agency's, 409 conflict, 413 file too large, 422 illegal lifecycle mov
 2. Render → New → Blueprint with this repo (`render.yaml`). Secrets: `SPRING_DATASOURCE_URL`,
    `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `JWT_SECRET` (≥ 32 chars), `DATA_ENCRYPTION_KEY`,
    `BLIND_INDEX_KEY` (`openssl rand -base64 32` each), `GROQ_API_KEY`, `VOYAGE_API_KEY`, `CORS_ALLOWED_ORIGINS`.
-3. The frontend static site proxies `/api/*` to the backend (same origin, so `SameSite=Strict` cookies work) and
-   sends a strict CSP and security headers.
+3. The frontend runs on Vercel: `frontend-cotizaIA/vercel.json` proxies `/api/*` to this service (same origin, so
+   the `SameSite=Strict` cookies work) and sends a strict CSP and security headers. `VITE_API_URL` must stay empty.
 4. Seed the demo memory: upload the PDFs in `seed/pdf/train/` through `POST /api/knowledge/documents`.
 
 Defense day: Render free sleeps after ~15 min idle (open `/actuator/health` a few minutes before); Supabase free
