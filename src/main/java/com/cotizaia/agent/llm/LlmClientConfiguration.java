@@ -6,6 +6,7 @@ import com.cotizaia.agent.embedding.CloudAiFactory;
 import com.cotizaia.agent.embedding.EmbeddingClient;
 import com.cotizaia.agent.embedding.EmbeddingProperties;
 import com.cotizaia.agent.embedding.OllamaAiFactory;
+import com.cotizaia.agent.embedding.OllamaCloudAiFactory;
 import com.cotizaia.agent.embedding.RetryEmbeddingClient;
 import com.cotizaia.agent.embedding.StubAiFactory;
 import com.cotizaia.agent.embedding.StubEmbeddingClient;
@@ -59,10 +60,12 @@ public class LlmClientConfiguration {
         Map<String, Supplier<AiProviderFactory>> families = Map.of(
                 "ollama", () -> new OllamaAiFactory(builder, properties, embeddingProperties),
                 "groq", () -> new CloudAiFactory(builder, properties, embeddingProperties),
-                "stub", StubAiFactory::new);
+                "stub", StubAiFactory::new,
+                "ollama-cloud", () -> new OllamaCloudAiFactory(builder, properties, embeddingProperties));
         Supplier<AiProviderFactory> supplier = families.get(selected);
         if (supplier == null) {
-            throw new IllegalStateException("Unknown llm.provider: " + selected + "; allowed: ollama, groq, stub");
+            throw new IllegalStateException(
+                    "Unknown llm.provider: " + selected + "; allowed: ollama, groq, stub, ollama-cloud");
         }
         return supplier.get();
     }

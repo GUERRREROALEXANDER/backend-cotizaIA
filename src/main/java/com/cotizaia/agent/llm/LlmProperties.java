@@ -56,6 +56,8 @@ public class LlmProperties {
     public static class Ollama {
         private String baseUrl = "http://localhost:11434";
         private String model = "llama3.1";
+        /** Blank for the local daemon; set for Ollama Cloud, which authenticates with a bearer token. */
+        private String apiKey = "";
 
         public String getBaseUrl() {
             return baseUrl;
@@ -71,6 +73,14 @@ public class LlmProperties {
 
         public void setModel(String model) {
             this.model = model;
+        }
+
+        public String getApiKey() {
+            return apiKey;
+        }
+
+        public void setApiKey(String apiKey) {
+            this.apiKey = apiKey == null ? "" : apiKey.trim();
         }
     }
 

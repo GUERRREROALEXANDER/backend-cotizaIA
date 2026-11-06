@@ -26,12 +26,36 @@ abstract class AbstractHttpLlmClient implements LlmClient {
                 Map.of("role", "user", "content", request.userPrompt()));
     }
 
-    protected LlmResponse response(JsonNode root, String pointer, Instant start) {
+    protected LlmResponse response(JsonNode root, String pointer, Instant start, boolean jsonOutput) {
         JsonNode content = root == null ? null : root.at(pointer);
         if (content == null || !content.isTextual() || content.asText().isBlank()) {
             throw new LlmException("LLM response has no content", true);
         }
-        return new LlmResponse(content.asText(), provider(), model, Duration.between(start, Instant.now()).toMillis());
+        String text = content.asText();
+        if (jsonOutput) {
+            text = unwrapMarkdownFence(text);
+        }
+        return new LlmResponse(text, provider(), model, Duration.between(start, Instant.now()).toMillis());
+    }
+
+    /**
+     * Some providers ignore the JSON-output request and wrap the object in one markdown code fence. Strip that
+     * fence so strict JSON handlers see the payload; anything else (plain text, multiple fences) is left untouched.
+     */
+    private static String unwrapMarkdownFence(String content) {
+        String trimmed = content.strip();
+        if (trimmed.length() < 6 || !trimmed.startsWith("```") || !trimmed.endsWith("```")) {
+            return content;
+        }
+        String inner = trimmed.substring(3, trimmed.length() - 3);
+        if (inner.startsWith("json")) {
+            inner = inner.substring("json".length());
+        }
+        if (inner.contains("```")) {
+            return content;
+        }
+        String unwrapped = inner.strip();
+        return unwrapped.isEmpty() ? content : unwrapped;
     }
 
     protected LlmException mapFailure(RestClientResponseException exception) {
