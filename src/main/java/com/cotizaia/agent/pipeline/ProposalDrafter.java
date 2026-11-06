@@ -28,6 +28,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class ProposalDrafter {
 
+    private static final org.slf4j.Logger LOGGER = org.slf4j.LoggerFactory.getLogger(ProposalDrafter.class);
+
     private static final String ALCANCE = "Alcance";
 
     private static final String SUPUESTOS = "Supuestos";
@@ -76,6 +78,9 @@ public class ProposalDrafter {
                 return new Drafted(toDraft(json, briefText, summary, retrieved), List.of(), attempt);
             }
         }
+        // Rule names only (the text before ':'), never the drafted text: it may quote the client's brief.
+        LOGGER.warn("Draft fell back to template after 2 attempts; violated rules: {}", violations.stream()
+                .map(violation -> violation.split(":", 2)[0]).distinct().toList());
         return new Drafted(template(summary, names), violations, 2);
     }
 

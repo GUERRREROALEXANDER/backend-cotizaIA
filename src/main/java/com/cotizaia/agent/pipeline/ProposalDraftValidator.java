@@ -22,8 +22,18 @@ public class ProposalDraftValidator {
 
     private static final int MAX_LIST_ENTRIES = 6;
 
-    private static final Pattern MONEY = Pattern.compile(
-            "\\$|\\b(cop|usd|pesos?|precios?|costos?|valor(?:es)?|tarifas?)\\b", Pattern.CASE_INSENSITIVE);
+    /** Currencies and amounts: forbidden in every section. */
+    private static final Pattern CURRENCY = Pattern.compile("\\$|\\b(cop|usd|pesos?)\\b", Pattern.CASE_INSENSITIVE);
+
+    /**
+     * Price vocabulary: forbidden in scope and assumptions (a promise about price). An exclusion may name a cost
+     * concept ("no se incluyen costos de transacción") as long as it carries no number: found in production, where
+     * the blanket rule rejected a legitimate exclusion twice and sent the draft to the template.
+     */
+    private static final Pattern PRICE_WORDS = Pattern.compile("\\b(precios?|costos?|valor(?:es)?|tarifas?)\\b",
+            Pattern.CASE_INSENSITIVE);
+
+    private static final Pattern DIGIT = Pattern.compile("\\d");
 
     private static final Pattern HOURS = Pattern.compile("\\b\\d[\\d.,]*\\s*(?:horas?|h)\\b",
             Pattern.CASE_INSENSITIVE);
@@ -96,7 +106,9 @@ public class ProposalDraftValidator {
         if (text.length() > MAX_TEXT) {
             violations.add(kind + " text exceeds " + MAX_TEXT + " characters");
         }
-        if (MONEY.matcher(text).find()) {
+        boolean priceWords = PRICE_WORDS.matcher(text).find();
+        boolean exclusionWithoutAmount = "exclusion".equals(kind) && !DIGIT.matcher(text).find();
+        if (CURRENCY.matcher(text).find() || (priceWords && !exclusionWithoutAmount)) {
             violations.add(kind + " text mentions money: " + text);
         }
         if (HOURS.matcher(text).find()) {
