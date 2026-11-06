@@ -189,6 +189,12 @@ Controllers map one resource each: `RoleController` owns `/api/roles/**` (includ
 
 Encryption at rest protects agency and client content: columns listed in the spec (agency names, user full names/emails, client names/emails/companies, brief raw text/payload, attachments, questions, requirements, agent step summaries, proposal terms/schedule/extras, proposal document bytes, notification payloads) are encrypted with AES-256-GCM using a key supplied via `DATA_ENCRYPTION_KEY` (no default key anywhere). Lookups on encrypted email columns go through a keyed HMAC blind index (`BLIND_INDEX_KEY`). Plaintext by design: ids, foreign keys, enums/statuses, dates, hours, amounts (SQL aggregation for analytics and pricing), catalog/role/category names (agency configuration, looked up by name), contract clause templates (same text for every client), file sizes, content types.
 
+Rate limits stop brute force and LLM cost abuse with `429` + `Retry-After` before the request reaches a controller. Credential endpoints (`/api/auth/login`, `/api/auth/register`, `/api/auth/refresh`) are limited per client IP (default 10 per 15 minutes); the model and embedding endpoints (quotations, brief upload/process/answer, knowledge upload/search, proposal revise) are limited per agency from the JWT `agencyId` claim (default 30 per minute). Tune them with `security.rate-limit.*` (`enabled`, `auth.capacity`, `auth.window`, `ai.capacity`, `ai.window`).
+
+**Known limitation:** counters are in memory and therefore per instance. With more than one instance, replace the in-memory store with a shared one (Redis/Bucket4j); Render's free plan runs a single instance.
+
+In production (`application-prod.yml`) OpenAPI docs and Swagger UI are off unless `SWAGGER_ENABLED=true`, only `/actuator/health` is exposed without details, and error responses never include stack traces or messages. `server.forward-headers-strategy: framework` makes `getRemoteAddr()` the real client behind Render's proxy.
+
 ## Database
 
 - Flyway owns the schema (`src/main/resources/db/migration`); Hibernate runs `ddl-auto: validate`, so the app refuses to start against an out-of-date schema.

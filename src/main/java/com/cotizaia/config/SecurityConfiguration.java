@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
+import java.time.Clock;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Enumeration;
@@ -57,7 +58,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
  * refresh cookie through permitAll endpoints, not the access token.
  */
 @Configuration
-@EnableConfigurationProperties(SecurityProperties.class)
+@EnableConfigurationProperties({SecurityProperties.class, RateLimitProperties.class})
 public class SecurityConfiguration {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SecurityConfiguration.class);
@@ -118,8 +119,13 @@ public class SecurityConfiguration {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, RequestMatcher csrfProtectionMatcher)
-            throws Exception {
+    public RateLimiter rateLimiter() {
+        return new RateLimiter(Clock.systemUTC());
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, RequestMatcher csrfProtectionMatcher,
+            RateLimitProperties rateLimitProperties, RateLimiter rateLimiter) throws Exception {
         AuthenticationEntryPoint entryPoint = (request, response, exception) -> {
             response.setStatus(401);
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
@@ -158,6 +164,11 @@ public class SecurityConfiguration {
                 // Created here, not as a @Bean: Spring Boot registers every Filter bean in the servlet
                 // container too, which would run it a second time outside the security chain.
                 .addFilterBefore(new AccessCookieAuthenticationFilter(), BearerTokenAuthenticationFilter.class)
+                // After authentication so the per-agency AI bucket can read the
+                // agencyId claim; created here for the same reason as the cookie
+                // filter (a Filter bean would also run in the servlet container).
+                .addFilterAfter(new RateLimitFilter(rateLimitProperties, rateLimiter),
+                        BearerTokenAuthenticationFilter.class)
                 .build();
     }
 

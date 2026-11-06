@@ -21,9 +21,14 @@ spring:
       connection-timeout: 30000
 
 server:
-  # Render terminates TLS at its proxy and forwards X-Forwarded-* headers.
+  # Render terminates TLS at its proxy and forwards X-Forwarded-* headers, so
+  # getRemoteAddr() is the real client and rate-limit keys stay per client.
   forward-headers-strategy: framework
   shutdown: graceful
+  error:
+    # Never leak stack traces, exception messages or class names to clients.
+    include-stacktrace: never
+    include-message: never
 
 llm:
   provider: ${LLM_PROVIDER:groq}
@@ -34,8 +39,22 @@ knowledge:
   vector-store: pgvector
 
 springdoc:
+  # API docs are a development surface, not a production one: expose them only
+  # when SWAGGER_ENABLED=true is set on purpose.
+  api-docs:
+    enabled: ${SWAGGER_ENABLED:false}
   swagger-ui:
-    enabled: ${SWAGGER_ENABLED:true}
+    enabled: ${SWAGGER_ENABLED:false}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # Only the public health probe; env, beans, loggers, etc. stay closed.
+        include: health
+  endpoint:
+    health:
+      show-details: never
 
 logging:
   level:
