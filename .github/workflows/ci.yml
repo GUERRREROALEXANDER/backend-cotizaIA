@@ -1,0 +1,48 @@
+# Every push and PR is judged by the full suite (H2 + stub AI, no external services)
+# and by a secret scan over the whole history.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+      - name: Test
+        run: ./mvnw -B test
+      # PgVectorStoreTests skip themselves without Docker; in CI that would hide the only real-PostgreSQL run.
+      - name: Require the PostgreSQL + pgvector tests to have run
+        run: grep -q 'skipped="0"' target/surefire-reports/TEST-com.cotizaia.agent.knowledge.PgVectorStoreTests.xml
+      # Known-vulnerable runtime dependencies fail the build unless accepted with a reason and review date.
+      - name: Dependency vulnerabilities (OSV.dev)
+        run: |
+          ./mvnw -B -q dependency:list -DincludeScope=runtime -DoutputFile=target/runtime-deps.txt
+          python3 scripts/osv_check.py target/runtime-deps.txt security/osv-allowlist.txt
+      - name: Upload test reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: surefire-reports
+          path: target/surefire-reports
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

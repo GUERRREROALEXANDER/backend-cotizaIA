@@ -1,6 +1,7 @@
 package com.cotizaia.facade;
 
 import com.cotizaia.agent.AgentRun;
+import com.cotizaia.agent.pipeline.Citation;
 import com.cotizaia.agent.pipeline.PipelineContext;
 import com.cotizaia.agent.pipeline.PipelineProperties;
 import com.cotizaia.agent.pipeline.QuoteDraft;
@@ -113,10 +114,15 @@ public class ProposalLifecycleWriter {
             ExtractedRequirement extracted = requirements.save(new ExtractedRequirement(proposal.getBrief(),
                     requirement.getRequirementType(), requirement.getDescription(), requirement.getEstimatedHours(),
                     requirement.getConfidence()));
+            extracted.setEstimateSource(requirement.getEstimateSource() == null ? null
+                    : requirement.getEstimateSource().name());
+            extracted.setCitations(Citation.toJson(requirement.getCitations()));
             proposal.addItem(extracted, requirement.getEstimatedHours(), line.unitPrice());
         }
         proposal.applyPricingModel(draft.quote().model());
         attachSchedule(proposal, draft);
+        proposal.setDraftedContent(context.getProposalDraft() == null ? null
+                : context.getProposalDraft().toJson());
         proposals.saveAndFlush(proposal);
         if (contracts.findByProposalId(proposalId).isEmpty()) {
             contractService.generateDraft(proposalId, List.of());

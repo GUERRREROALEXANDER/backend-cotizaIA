@@ -10,6 +10,7 @@ public class RetryLlmClient implements LlmClient {
     private final int maxAttempts;
     private final Duration initialBackoff;
     private final double multiplier;
+    private final Duration maxBackoff;
     private final Sleeper sleeper;
 
     public RetryLlmClient(LlmClient delegate, LlmProperties.Retry retry, Sleeper sleeper) {
@@ -17,8 +18,9 @@ public class RetryLlmClient implements LlmClient {
         this.maxAttempts = retry.getMaxAttempts();
         this.initialBackoff = retry.getInitialBackoff();
         this.multiplier = retry.getMultiplier();
+        this.maxBackoff = retry.getMaxBackoff();
         this.sleeper = Objects.requireNonNull(sleeper);
-        if (maxAttempts < 1 || initialBackoff.isNegative() || multiplier < 1.0) {
+        if (maxAttempts < 1 || initialBackoff.isNegative() || multiplier < 1.0 || maxBackoff.isNegative()) {
             throw new IllegalArgumentException("Invalid LLM retry configuration");
         }
     }
@@ -32,15 +34,22 @@ public class RetryLlmClient implements LlmClient {
                 if (!exception.isRetryable() || attempt >= maxAttempts) {
                     throw exception;
                 }
-                long delay = (long) (initialBackoff.toMillis() * Math.pow(multiplier, attempt - 1));
+                Duration delay = retryDelay(attempt, exception);
                 try {
-                    sleeper.sleep(Duration.ofMillis(delay));
+                    sleeper.sleep(delay);
                 } catch (InterruptedException interrupted) {
                     Thread.currentThread().interrupt();
                     throw new LlmException("LLM retry interrupted", false, interrupted);
                 }
             }
         }
+    }
+
+    /** Waits for the provider hint when it is longer than our backoff, but never past the cap. */
+    private Duration retryDelay(int attempt, LlmException exception) {
+        long backoffMillis = (long) (initialBackoff.toMillis() * Math.pow(multiplier, attempt - 1));
+        long delayMillis = Math.max(backoffMillis, exception.retryAfter().map(Duration::toMillis).orElse(0L));
+        return Duration.ofMillis(Math.min(delayMillis, maxBackoff.toMillis()));
     }
 
     @Override

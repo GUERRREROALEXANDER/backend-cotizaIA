@@ -143,6 +143,30 @@ class BriefControllerTests {
                 .andExpect(status().isBadRequest());
     }
 
+    @Test
+    void acceptsTypedBriefTextAtExactlyTheLimit() throws Exception {
+        String text = "a".repeat(5_000);
+        mockMvc.perform(post("/api/briefs").with(forAgency(agencyId))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body("WHATSAPP", "{\"message\":\"" + text + "\"}")))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void rejectsTypedBriefTextOverTheLimitOnEveryChannel() throws Exception {
+        String text = "a".repeat(5_001);
+        for (String payload : new String[] {
+                body("WHATSAPP", "{\"message\":\"" + text + "\"}"),
+                body("EMAIL", "{\"body\":\"" + text + "\"}"),
+                body("WEB_FORM", "{\"description\":\"" + text + "\"}")}) {
+            mockMvc.perform(post("/api/briefs").with(forAgency(agencyId))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(payload))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.error", containsString("5000")));
+        }
+    }
+
     private String body(String source, String payloadJson) {
         return "{\"source\":\"" + source + "\",\"clientId\":" + clientId
                 + ",\"payload\":" + payloadJson + "}";

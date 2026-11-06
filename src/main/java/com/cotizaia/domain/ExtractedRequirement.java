@@ -1,6 +1,8 @@
 package com.cotizaia.domain;
 
+import com.cotizaia.crypto.EncryptedStringConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -44,6 +46,7 @@ public class ExtractedRequirement {
     @JoinColumn(name = "requirement_type_id", nullable = false)
     private RequirementType requirementType;
 
+    @Convert(converter = EncryptedStringConverter.class)
     @Column(nullable = false, length = 1000)
     private String description;
 
@@ -52,6 +55,14 @@ public class ExtractedRequirement {
 
     @Column(nullable = false, precision = 5, scale = 4)
     private BigDecimal confidence;
+
+    /** Enum name from the pipeline's estimation strategy, stored in plaintext for querying. */
+    @Column(name = "estimate_source", length = 10)
+    private String estimateSource;
+
+    @Convert(converter = EncryptedStringConverter.class)
+    @Column(name = "estimate_citations")
+    private String citations;
 
     @Column(name = "ambiguity_flag", nullable = false)
     private boolean ambiguityFlag;
@@ -120,6 +131,22 @@ public class ExtractedRequirement {
 
     public BigDecimal getConfidence() {
         return confidence;
+    }
+
+    public String getEstimateSource() {
+        return estimateSource;
+    }
+
+    public void setEstimateSource(String estimateSource) {
+        this.estimateSource = estimateSource;
+    }
+
+    public String getCitations() {
+        return citations;
+    }
+
+    public void setCitations(String citations) {
+        this.citations = citations;
     }
 
     public boolean isAmbiguityFlag() {

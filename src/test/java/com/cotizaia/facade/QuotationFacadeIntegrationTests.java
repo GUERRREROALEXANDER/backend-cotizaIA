@@ -127,7 +127,7 @@ class QuotationFacadeIntegrationTests {
         });
         assertThat(result.questions()).extracting(QuotationResult.QuestionView::code)
                 .containsExactly("PAGE_COUNT_MISSING", "DEADLINE_MISSING");
-        assertThat(steps.findByExecutionIdOrderByStepOrderAsc(result.executionId())).hasSize(7);
+        assertThat(steps.findByExecutionIdOrderByStepOrderAsc(result.executionId())).hasSize(8);
         assertThat(executions.findById(result.executionId()).orElseThrow().getStatus())
                 .isEqualTo(ExecutionStatus.SUCCEEDED);
         transactions.executeWithoutResult(status -> {
@@ -189,7 +189,35 @@ class QuotationFacadeIntegrationTests {
                     assertThat(question.getAnswer()).isNotBlank();
                 });
         assertThat(executions.findByBriefIdOrderByIdAsc(brief.getId())).hasSize(3);
-        assertThat(steps.findByExecutionIdOrderByStepOrderAsc(complete.executionId())).hasSize(7);
+        assertThat(steps.findByExecutionIdOrderByStepOrderAsc(complete.executionId())).hasSize(8);
+    }
+
+    /**
+     * Regression (execution 21 in the demo): answering NO_SCOPE resolves the
+     * code, but if the answer still yields no requirements the run used to
+     * reach GenerateHandler with a null quote and fail with an NPE. The agent
+     * must instead stop and ask for the scope again.
+     */
+    @Test
+    void answeredScopeThatStillExtractsNothingAsksAgainInsteadOfFailing() {
+        Brief brief = fixture("hola, necesito ayuda con algo", true);
+        QuotationResult halted = facade.processBrief(brief.getId());
+        QuotationResult partial = facade.answerQuestion(brief.getId(), questionId(halted, "NO_SCOPE"),
+                "Que se vea bonito y moderno");
+
+        QuotationResult result = facade.answerQuestion(brief.getId(),
+                questionId(partial, "PROJECT_TYPE_UNKNOWN"), "Para mi negocio de ropa");
+
+        assertThat(result.halted()).isTrue();
+        assertThat(result.executionStatus()).isNotEqualTo(ExecutionStatus.FAILED);
+        assertThat(result.proposalStatus()).isEqualTo(ProposalStatus.ANALYZING);
+        assertThat(result.documents()).isEmpty();
+        assertThat(requirements.countByBriefId(brief.getId())).isZero();
+        assertThat(result.questions()).filteredOn(question -> question.code().equals("NO_SCOPE"))
+                .anySatisfy(question -> {
+                    assertThat(question.blocking()).isTrue();
+                    assertThat(question.status()).isEqualTo(QuestionStatus.OPEN);
+                });
     }
 
     @Test

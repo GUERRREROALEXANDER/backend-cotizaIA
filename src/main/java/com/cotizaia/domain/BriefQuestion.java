@@ -1,6 +1,8 @@
 package com.cotizaia.domain;
 
+import com.cotizaia.crypto.EncryptedStringConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -34,6 +36,7 @@ public class BriefQuestion {
     @Column(nullable = false, length = 60)
     private String code;
 
+    @Convert(converter = EncryptedStringConverter.class)
     @Column(nullable = false, length = 1000)
     private String question;
 
@@ -44,6 +47,7 @@ public class BriefQuestion {
     @Column(nullable = false, length = 20)
     private QuestionStatus status;
 
+    @Convert(converter = EncryptedStringConverter.class)
     @Column(columnDefinition = "TEXT")
     private String answer;
 
@@ -87,6 +91,20 @@ public class BriefQuestion {
         validateText(question, 1000, "question");
         this.question = question;
         this.blocking = blocking;
+    }
+
+    /**
+     * Re-opens an answered question when the pipeline still needs that scope.
+     * Why: an answered NO_SCOPE can yield zero catalog requirements, so the next run must ask again
+     * on the same row instead of silently keeping it resolved (executions 21/22 asked once then NPE'd).
+     */
+    public void reopen(String question, boolean blocking) {
+        validateText(question, 1000, "question");
+        this.question = question;
+        this.blocking = blocking;
+        this.status = QuestionStatus.OPEN;
+        this.answer = null;
+        this.resolvedAt = null;
     }
 
     private void requireOpen() {

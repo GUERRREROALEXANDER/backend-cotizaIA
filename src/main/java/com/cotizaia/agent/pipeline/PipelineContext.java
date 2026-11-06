@@ -2,6 +2,7 @@ package com.cotizaia.agent.pipeline;
 
 import com.cotizaia.document.DocumentData;
 import com.cotizaia.document.DocumentType;
+import com.cotizaia.document.ProposalDraft;
 import com.cotizaia.domain.Brief;
 import com.cotizaia.pricing.PricingQuote;
 import java.math.BigDecimal;
@@ -43,6 +44,8 @@ public class PipelineContext {
 
     private List<DocumentData.PhaseData> phasePlan = List.of();
 
+    private ProposalDraft proposalDraft;
+
     private QuoteDraft draft;
 
     private boolean halted;
@@ -67,6 +70,21 @@ public class PipelineContext {
         for (Clarification clarification : clarifications) {
             text.append("\nAclaracion (").append(clarification.question()).append("): ")
                     .append(clarification.answer());
+        }
+        return text.toString();
+    }
+
+    /**
+     * Returns only user-provided evidence (brief plus answers) for scope decisions.
+     * Why: question boilerplate must never count as scope. The NO_SCOPE retry question lists
+     * catalog examples ("menú digital, reservas, pagos en línea") and "catálogo" contains the
+     * substring "logo", so feeding questions to classification/extraction invents phantom
+     * requirements and a spurious BRANDING type from wording the user never wrote.
+     */
+    public String evidenceText() {
+        StringBuilder text = new StringBuilder(brief.getRawText());
+        for (Clarification clarification : clarifications) {
+            text.append("\nAclaracion: ").append(clarification.answer());
         }
         return text.toString();
     }
@@ -159,6 +177,14 @@ public class PipelineContext {
 
     public void setPhasePlan(List<DocumentData.PhaseData> value) {
         phasePlan = value;
+    }
+
+    public ProposalDraft getProposalDraft() {
+        return proposalDraft;
+    }
+
+    public void setProposalDraft(ProposalDraft value) {
+        proposalDraft = value;
     }
 
     public QuoteDraft getDraft() {

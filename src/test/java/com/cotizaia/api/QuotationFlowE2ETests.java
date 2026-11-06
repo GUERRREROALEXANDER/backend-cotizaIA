@@ -168,7 +168,7 @@ class QuotationFlowE2ETests {
                                 + "\"email\":\"owner-" + suffix + "@demo.co\",\"password\":\"secret123\"}"))
                 .andExpect(status().isCreated())
                 .andReturn();
-        String token = JsonPath.read(registered.getResponse().getContentAsString(), "$.token");
+        String token = AuthCookieTests.cookie(registered, "cz_access");
 
         long clientId = readLong(call(post("/api/clients"), token,
                 "{\"name\":\"Restaurante El Sabor\",\"email\":\"sabor-" + suffix + "@demo.co\"}",

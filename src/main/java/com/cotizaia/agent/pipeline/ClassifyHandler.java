@@ -42,7 +42,7 @@ public class ClassifyHandler extends PipelineHandler {
 
     @Override
     protected HandlerResult process(PipelineContext context) {
-        String response = client.complete(prompts.classify(context.analysisText(), TYPES)).content();
+        String response = client.complete(prompts.classify(context.evidenceText(), TYPES)).content();
         if (response == null || response.isBlank()) {
             throw new IllegalStateException("Invalid classification JSON");
         }

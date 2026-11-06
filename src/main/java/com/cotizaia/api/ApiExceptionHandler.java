@@ -3,6 +3,7 @@ package com.cotizaia.api;
 import com.cotizaia.agent.PipelineRunRecorder.PipelineFailedException;
 import com.cotizaia.domain.state.InvalidStateTransitionException;
 import com.cotizaia.ingest.UnsupportedChannelException;
+import com.cotizaia.ingest.UploadTooLargeException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
@@ -30,7 +32,7 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
  * Maps every failure to a JSON {@code {"error": ...}} body with a meaningful status:
  * 400 invalid input (body validation, malformed JSON, bad parameter type, missing or invalid parameter,
  * unsupported channel), 401 bad credentials, 404 missing or foreign-agency resource and unknown route,
- * 405 wrong method, 409 conflicting data, 415 wrong content type, 422 illegal lifecycle move,
+ * 405 wrong method, 409 conflicting data, 413 upload too large, 415 wrong content type, 422 illegal lifecycle move,
  * 503 failed agent run (with {@code executionId}) and 500 for anything unexpected, whose details are
  * logged but never returned. Missing or invalid tokens are rejected earlier by the security filters.
  */
@@ -112,6 +114,12 @@ public class ApiExceptionHandler {
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public Map<String, String> notFound(NoSuchElementException exception) {
         return Map.of("error", String.valueOf(exception.getMessage()));
+    }
+
+    @ExceptionHandler({UploadTooLargeException.class, MaxUploadSizeExceededException.class})
+    @ResponseStatus(HttpStatus.PAYLOAD_TOO_LARGE)
+    public Map<String, String> tooLarge(RuntimeException exception) {
+        return Map.of("error", "File exceeds 10 MB");
     }
 
     @ExceptionHandler(NoResourceFoundException.class)

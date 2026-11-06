@@ -4,6 +4,9 @@ import com.cotizaia.agent.llm.LlmClient;
 import com.cotizaia.agent.llm.PromptBuilder;
 import com.cotizaia.document.DocumentData;
 import com.cotizaia.document.DocumentFactory;
+import com.cotizaia.document.DocumentNode;
+import com.cotizaia.document.DraftDocumentBuilder;
+import com.cotizaia.document.DraftOrigin;
 import com.cotizaia.domain.DefaultContractClauses;
 import com.cotizaia.pricing.PricedLine;
 import java.math.BigDecimal;
@@ -11,11 +14,15 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
  * Produces a summary and three provisional PDFs in memory (project.txt section 6) using existing document generators.
  * Planning uses a deterministic effort split so the model cannot invent prices, payment terms, or phase durations.
+ *
+ * <p>Why a null quote halts instead of throwing: empty scope skips pricing, so there is nothing to document.
+ * Halting keeps the run out of FAILED and lets the ambiguity gate ask for scope again (executions 21/22 NPE'd here).
  *
  * <p>Design pattern - <b>Chain of Responsibility</b>: this ConcreteHandler renders artifacts after ambiguity checking;
  * {@link PipelineHandler} forwards the completed artifacts to the composition successor.
@@ -31,12 +38,22 @@ public class GenerateHandler extends PipelineHandler {
 
     private final PipelineProperties properties;
 
+    private final ProposalDrafter drafter;
+
+    @Autowired
     public GenerateHandler(LlmClient client, PromptBuilder prompts, DocumentFactory documents,
-            PipelineProperties properties) {
+            PipelineProperties properties, ProposalDrafter drafter) {
         this.client = client;
         this.prompts = prompts;
         this.documents = documents;
         this.properties = properties;
+        this.drafter = drafter;
+    }
+
+    /** Template-only wiring for hand-built chains and tests: no drafter means today's behavior. */
+    public GenerateHandler(LlmClient client, PromptBuilder prompts, DocumentFactory documents,
+            PipelineProperties properties) {
+        this(client, prompts, documents, properties, null);
     }
 
     @Override
@@ -46,10 +63,21 @@ public class GenerateHandler extends PipelineHandler {
 
     @Override
     protected HandlerResult process(PipelineContext context) {
+        if (context.getQuote() == null) {
+            return HandlerResult.halt("no quote to document");
+        }
         List<String> names = context.getRequirements().stream()
                 .map(draft -> draft.getRequirementType().getName()).toList();
         context.setSummary(client.complete(prompts.summarize(context.analysisText(),
                 context.getProjectType(), names)).content());
+        DocumentNode body = null;
+        ProposalDrafter.Drafted drafted = null;
+        if (drafter != null) {
+            drafted = drafter.draft(context.getAgencyId() == null ? 0L : context.getAgencyId(),
+                    context.analysisText(), context.getSummary(), context.getRequirements());
+            context.setProposalDraft(drafted.draft());
+            body = DraftDocumentBuilder.build(drafted.draft());
+        }
         List<DocumentData.PhaseData> phases = phases(context);
         context.setPhasePlan(phases);
         List<DocumentData.LineData> lines = context.getQuote().lines().stream()
@@ -59,8 +87,11 @@ public class GenerateHandler extends PipelineHandler {
                 "Brief #" + context.getBrief().getId(), LocalDate.now(), context.getSummary(),
                 context.getQuote().model(), lines, subtotal, List.of(), subtotal,
                 subtotal.multiply(new BigDecimal("0.50")).setScale(2, RoundingMode.HALF_UP), phases,
-                DefaultContractClauses.DEFAULT_CLAUSES);
+                DefaultContractClauses.DEFAULT_CLAUSES, body);
         context.setDocuments(documents.renderAll(data));
+        if (drafted != null && drafted.draft().origin() == DraftOrigin.TEMPLATE) {
+            return HandlerResult.flag("draft fell back to template: " + String.join("; ", drafted.violations()));
+        }
         return HandlerResult.proceed("three PDFs generated");
     }
 

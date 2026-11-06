@@ -12,6 +12,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -85,6 +87,25 @@ public class ProposalController {
     @Operation(summary = "Negotiate proposal")
     public ProposalDetailResponse negotiate(@PathVariable Long id, CurrentUser user) {
         return ProposalDetailResponse.from(proposals.negotiate(user.agencyId(), id));
+    }
+
+    @PostMapping("/{id}/revise")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Issue the next revision of a negotiated proposal")
+    public ProposalDetailResponse revise(@PathVariable Long id, CurrentUser user) {
+        return ProposalDetailResponse.from(proposals.revise(user.agencyId(), id));
+    }
+
+    @PostMapping("/{id}/undo")
+    @Operation(summary = "Undo the latest quote command")
+    public ProposalDetailResponse undo(@PathVariable Long id, CurrentUser user) {
+        return ProposalDetailResponse.from(proposals.undo(user.agencyId(), id));
+    }
+
+    @GetMapping("/{id}/commands")
+    @Operation(summary = "List executed quote commands")
+    public List<ProposalCommandResponse> commands(@PathVariable Long id, CurrentUser user) {
+        return proposals.commands(user.agencyId(), id).stream().map(ProposalCommandResponse::from).toList();
     }
 
     @PostMapping("/{id}/reject")

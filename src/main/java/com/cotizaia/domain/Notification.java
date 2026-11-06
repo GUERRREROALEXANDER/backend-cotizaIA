@@ -1,6 +1,8 @@
 package com.cotizaia.domain;
 
+import com.cotizaia.crypto.EncryptedStringConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -39,6 +41,7 @@ public class Notification {
     @Column(name = "event_type", nullable = false, length = 60)
     private String eventType;
 
+    @Convert(converter = EncryptedStringConverter.class)
     @Column(nullable = false, columnDefinition = "TEXT")
     private String payload;
 

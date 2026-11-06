@@ -2,7 +2,10 @@ package com.cotizaia.service;
 
 import com.cotizaia.document.DocumentData;
 import com.cotizaia.document.DocumentFactory;
+import com.cotizaia.document.DocumentNode;
 import com.cotizaia.document.DocumentType;
+import com.cotizaia.document.DraftDocumentBuilder;
+import com.cotizaia.document.ProposalDraft;
 import com.cotizaia.domain.DefaultContractClauses;
 import com.cotizaia.domain.Proposal;
 import com.cotizaia.domain.ProposalDocument;
@@ -41,7 +44,23 @@ public class DocumentService {
         List<String> clauses = contracts.findByProposalId(proposalId)
                 .map(contract -> contract.getClauses().stream().map(clause -> clause.getText()).toList())
                 .orElse(DefaultContractClauses.DEFAULT_CLAUSES);
-        return store(proposal, factory.renderAll(DocumentData.from(proposal, clauses, summary)));
+        ProposalDraft draft = draft(proposal);
+        String keptSummary = draft == null || draft.summary() == null ? summary : draft.summary();
+        DocumentNode body = draft == null ? null : DraftDocumentBuilder.build(draft);
+        return store(proposal, factory.renderAll(DocumentData.from(proposal, clauses, keptSummary, body)));
+    }
+
+    /** Approval must keep the AI text: the draft is stored with the proposal it belongs to. */
+    private ProposalDraft draft(Proposal proposal) {
+        String stored = proposal.getDraftedContent();
+        if (stored == null || stored.isBlank()) {
+            return null;
+        }
+        try {
+            return ProposalDraft.fromJson(stored);
+        } catch (IllegalArgumentException exception) {
+            return null;
+        }
     }
 
     @Transactional

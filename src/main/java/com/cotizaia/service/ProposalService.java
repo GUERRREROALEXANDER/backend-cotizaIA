@@ -2,6 +2,7 @@ package com.cotizaia.service;
 
 import com.cotizaia.domain.Payment;
 import com.cotizaia.domain.Proposal;
+import com.cotizaia.domain.ProposalCommandRecord;
 import com.cotizaia.domain.ProposalDocument;
 import com.cotizaia.domain.ProposalStatus;
 import com.cotizaia.repository.ProposalRepository;
@@ -57,6 +58,19 @@ public class ProposalService {
         return detail(approval.adjustHours(agencyId, id, itemId, hours));
     }
 
+    public Detail undo(Long agencyId, Long id) {
+        return detail(approval.undo(agencyId, id));
+    }
+
+    public Detail revise(Long agencyId, Long id) {
+        return detail(approval.revise(agencyId, id));
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProposalCommandRecord> commands(Long agencyId, Long id) {
+        return approval.commands(agencyId, id);
+    }
+
     public Detail approve(Long agencyId, Long id) {
         return detail(approval.approve(agencyId, id));
     }
@@ -78,7 +92,10 @@ public class ProposalService {
     }
 
     private Detail detail(Proposal proposal) {
-        proposal.getItems().forEach(item -> Hibernate.initialize(item.getRequirement()));
+        proposal.getItems().forEach(item -> {
+            Hibernate.initialize(item.getRequirement());
+            Hibernate.initialize(item.getRequirement().getRequirementType());
+        });
         // The getters return unmodifiable views, on which Hibernate.initialize() is a no-op; size() reaches the
         // underlying persistent collection and loads it inside this transaction.
         proposal.getAppliedExtras().size();

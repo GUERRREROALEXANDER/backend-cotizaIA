@@ -1,0 +1,4 @@
+# <advisory> <review-by YYYY-MM-DD> <why it is not reachable here>
+# spring-webmvc 6.2.19 is the last 6.2 patch; fixes exist only in Spring 7 (Boot 4). Neither feature is used.
+GHSA-j9f9-w8pj-32f8 2027-02-01 SSE fragment rendering corruption: the API serves no Server-Sent Events.
+GHSA-pc63-qcmh-9cmg 2027-02-01 XsltView path limitation: no XSLT views; the API only returns JSON and PDFs.

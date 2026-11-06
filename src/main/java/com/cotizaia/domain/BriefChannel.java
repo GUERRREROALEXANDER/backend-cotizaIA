@@ -2,7 +2,7 @@ package com.cotizaia.domain;
 
 /**
  * Input channel a {@link Brief} arrived through (project.txt section 6 pattern
- * 5a: Email / WhatsApp / web form). Each channel has its own payload shape; the
+ * 5a: Email / WhatsApp / web form / PDF upload). Each channel has its own payload shape; the
  * channel value is stored in {@code briefs.source} and constrained by
  * {@code ck_briefs_source}.
  *
@@ -14,5 +14,6 @@ package com.cotizaia.domain;
 public enum BriefChannel {
     EMAIL,
     WHATSAPP,
-    WEB_FORM
+    WEB_FORM,
+    PDF
 }

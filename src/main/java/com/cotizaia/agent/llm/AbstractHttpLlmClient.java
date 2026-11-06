@@ -5,6 +5,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
@@ -35,7 +36,23 @@ abstract class AbstractHttpLlmClient implements LlmClient {
 
     protected LlmException mapFailure(RestClientResponseException exception) {
         int status = exception.getStatusCode().value();
-        return new LlmException(provider() + " HTTP " + status, status == 429 || status >= 500, exception);
+        Duration retryAfter = retryAfter(exception);
+        return new LlmException(provider() + " HTTP " + status,
+                status == 429 || status >= 500 || isJsonSamplingFailure(status, exception), retryAfter, exception);
+    }
+
+    /**
+     * In JSON mode Groq (and other OpenAI-compatible APIs) answer 400 {@code json_validate_failed} when the model
+     * happened to sample invalid JSON. A new sample usually succeeds, so it is retryable; other 400s are not.
+     */
+    private static boolean isJsonSamplingFailure(int status, RestClientResponseException exception) {
+        return status == 400 && exception.getResponseBodyAsString().contains("json_validate_failed");
+    }
+
+    private Duration retryAfter(RestClientResponseException exception) {
+        HttpHeaders headers = exception.getResponseHeaders();
+        String value = headers == null ? null : headers.getFirst(HttpHeaders.RETRY_AFTER);
+        return RetryAfter.parse(value).orElse(null);
     }
 
     protected LlmException mapFailure(ResourceAccessException exception) {

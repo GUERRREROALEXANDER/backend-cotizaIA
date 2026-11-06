@@ -77,7 +77,9 @@ public class LlmProperties {
     public static class Groq {
         private String baseUrl = "https://api.groq.com/openai/v1";
         private String apiKey = "";
-        private String model = "llama-3.1-8b-instant";
+        private String model = "openai/gpt-oss-20b";
+        /** gpt-oss reasoning effort (low|medium|high); blank = provider default. Hidden reasoning tokens count. */
+        private String reasoningEffort = "";
 
         public String getBaseUrl() {
             return baseUrl;
@@ -102,7 +104,15 @@ public class LlmProperties {
         public void setModel(String model) {
             this.model = model;
         }
-    }
+    
+        public String getReasoningEffort() {
+            return reasoningEffort;
+        }
+
+        public void setReasoningEffort(String reasoningEffort) {
+            this.reasoningEffort = reasoningEffort == null ? "" : reasoningEffort.trim();
+        }
+}
 
     public static class Timeout {
         private Duration connect = Duration.ofSeconds(5);
@@ -129,6 +139,7 @@ public class LlmProperties {
         private int maxAttempts = 3;
         private Duration initialBackoff = Duration.ofMillis(500);
         private double multiplier = 2.0;
+        private Duration maxBackoff = Duration.ofSeconds(60);
 
         public int getMaxAttempts() {
             return maxAttempts;
@@ -152,6 +163,14 @@ public class LlmProperties {
 
         public void setMultiplier(double multiplier) {
             this.multiplier = multiplier;
+        }
+
+        public Duration getMaxBackoff() {
+            return maxBackoff;
+        }
+
+        public void setMaxBackoff(Duration maxBackoff) {
+            this.maxBackoff = maxBackoff;
         }
     }
 }

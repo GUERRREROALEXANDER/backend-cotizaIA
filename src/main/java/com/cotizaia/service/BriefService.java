@@ -11,8 +11,10 @@ import com.cotizaia.repository.ClientRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -72,6 +74,12 @@ public class BriefService {
     public Brief get(Long agencyId, Long id) {
         return briefRepository.findByIdAndClientAgencyId(id, agencyId)
                 .orElseThrow(() -> new NoSuchElementException("Brief not found: " + id));
+    }
+
+    /** Newest briefs of one agency, capped by {@code limit} in SQL. */
+    @Transactional(readOnly = true)
+    public List<Brief> list(Long agencyId, int limit) {
+        return briefRepository.findByClientAgencyIdOrderByIdDesc(agencyId, PageRequest.of(0, limit));
     }
 
     private Brief ingest(Client client, BriefChannel channel, Map<String, Object> payload) {

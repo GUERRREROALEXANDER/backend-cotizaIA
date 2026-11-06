@@ -20,6 +20,6 @@ public class EmailBriefAdapter implements BriefSource {
 
     @Override
     public NormalizedBrief normalize(Map<String, Object> payload) {
-        return new NormalizedBrief(PayloadSupport.requireText(payload, "body"));
+        return new NormalizedBrief(PayloadSupport.requireText(payload, "body", PayloadSupport.MAX_TYPED_TEXT_CHARS));
     }
 }

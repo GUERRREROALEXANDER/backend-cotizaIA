@@ -1,5 +1,9 @@
 package com.cotizaia.api;
 
+import com.cotizaia.agent.pipeline.Citation;
+import com.cotizaia.agent.pipeline.EstimateSource;
+import com.cotizaia.document.ProposalDraft;
+import com.cotizaia.domain.ExtractedRequirement;
 import com.cotizaia.domain.Payment;
 import com.cotizaia.domain.Phase;
 import com.cotizaia.domain.Proposal;
@@ -19,14 +23,17 @@ import java.util.Set;
  * Projects the loaded proposal review view (project.txt sections 2 and 5).
  * Explicit nested records expose business values without serializing JPA associations or PDF content.
  */
-public record ProposalDetailResponse(Long id, Long briefId, ProposalStatus status,
-        Set<ProposalStatus> allowedTransitions, BigDecimal subtotal, BigDecimal total, PricingModel pricingModel,
-        Instant approvedAt, List<ItemResponse> items, List<ExtraResponse> extras, ScheduleResponse schedule,
-        List<StatusChangeResponse> statusHistory, List<DocumentResponse> documents, DepositResponse deposit) {
+public record ProposalDetailResponse(Long id, Long briefId, ProposalStatus status, int revisionNumber,
+        Long revisionOf, Set<ProposalStatus> allowedTransitions, BigDecimal subtotal, BigDecimal total,
+        PricingModel pricingModel, Instant approvedAt, List<ItemResponse> items, List<ExtraResponse> extras,
+        ScheduleResponse schedule, List<StatusChangeResponse> statusHistory, List<DocumentResponse> documents,
+        DepositResponse deposit, ProposalDraft draft) {
 
     public static ProposalDetailResponse from(Detail detail) {
         Proposal proposal = detail.proposal();
         return new ProposalDetailResponse(proposal.getId(), proposal.getBrief().getId(), proposal.getStatus(),
+                proposal.getRevisionNumber(),
+                proposal.getRevisionOf() == null ? null : proposal.getRevisionOf().getId(),
                 proposal.getState().allowedTransitions(), proposal.getSubtotal(), proposal.getTotal(),
                 proposal.getPricingModel(), proposal.getApprovedAt(),
                 proposal.getItems().stream().map(ItemResponse::from).toList(),
@@ -34,16 +41,29 @@ public record ProposalDetailResponse(Long id, Long briefId, ProposalStatus statu
                 ScheduleResponse.from(proposal.getSchedulePlan()),
                 proposal.getStatusHistory().stream().map(StatusChangeResponse::from).toList(),
                 detail.documents().stream().map(DocumentResponse::from).toList(),
-                DepositResponse.from(detail.deposit()));
+                DepositResponse.from(detail.deposit()), draft(proposal));
     }
 
-    /** One priced requirement with its current reviewed hours. */
-    public record ItemResponse(Long id, Long requirementId, String description, BigDecimal hours,
-            BigDecimal unitPrice, BigDecimal lineTotal) {
+    private static ProposalDraft draft(Proposal proposal) {
+        try {
+            return ProposalDraft.fromJson(proposal.getDraftedContent());
+        } catch (IllegalArgumentException exception) {
+            return null;
+        }
+    }
+
+    /** One priced requirement with its current reviewed hours and estimation provenance. */
+    public record ItemResponse(Long id, Long requirementId, String description, String requirementType,
+            EstimateSource estimateSource, List<Citation> citations, BigDecimal hours, BigDecimal unitPrice,
+            BigDecimal lineTotal) {
 
         public static ItemResponse from(QuotedItem item) {
-            return new ItemResponse(item.getId(), item.getRequirement().getId(),
-                    item.getRequirement().getDescription(), item.getHours(), item.getUnitPrice(), item.getLineTotal());
+            ExtractedRequirement requirement = item.getRequirement();
+            return new ItemResponse(item.getId(), requirement.getId(), requirement.getDescription(),
+                    requirement.getRequirementType().getName(),
+                    EstimateSource.fromStored(requirement.getEstimateSource()),
+                    Citation.fromJson(requirement.getCitations()), item.getHours(), item.getUnitPrice(),
+                    item.getLineTotal());
         }
     }
 

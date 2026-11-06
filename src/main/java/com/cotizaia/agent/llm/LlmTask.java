@@ -4,5 +4,7 @@ package com.cotizaia.agent.llm;
 public enum LlmTask {
     CLASSIFY,
     EXTRACT,
-    SUMMARIZE
+    EXTRACT_ITEMS,
+    SUMMARIZE,
+    DRAFT_PROPOSAL
 }

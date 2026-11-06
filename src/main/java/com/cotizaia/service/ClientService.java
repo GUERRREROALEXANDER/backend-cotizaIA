@@ -1,6 +1,7 @@
 package com.cotizaia.service;
 
 import com.cotizaia.domain.Agency;
+import com.cotizaia.crypto.BlindIndex;
 import com.cotizaia.domain.Client;
 import com.cotizaia.repository.AgencyRepository;
 import com.cotizaia.repository.ClientRepository;
@@ -21,9 +22,12 @@ public class ClientService {
 
     private final AgencyRepository agencies;
 
-    public ClientService(ClientRepository clients, AgencyRepository agencies) {
+    private final BlindIndex blindIndex;
+
+    public ClientService(ClientRepository clients, AgencyRepository agencies, BlindIndex blindIndex) {
         this.clients = clients;
         this.agencies = agencies;
+        this.blindIndex = blindIndex;
     }
 
     @Transactional(readOnly = true)
@@ -42,6 +46,7 @@ public class ClientService {
                 .orElseThrow(() -> new NoSuchElementException("Agency not found: " + agencyId));
         Client client = new Client(agency, name, email);
         client.setCompany(company);
+        client.setEmailHash(blindIndex.hash(email));
         return clients.saveAndFlush(client);
     }
 
@@ -50,6 +55,7 @@ public class ClientService {
         client.setName(name);
         client.setEmail(email);
         client.setCompany(company);
+        client.setEmailHash(blindIndex.hash(email));
         return clients.saveAndFlush(client);
     }
 

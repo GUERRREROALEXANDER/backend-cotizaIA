@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.3.13</version>
+        <version>3.5.16</version>
         <relativePath/>
     </parent>
 
@@ -21,6 +21,18 @@
         <java.version>17</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <openpdf.version>2.0.5</openpdf.version>
+        <!-- Byte Buddy 1.14 (Boot 3.3 default) cannot instrument classes on JDK 21+ runtimes newer than it knows;
+             1.17 lets Mockito run the suite on any JDK from 17 to 25. -->
+        <byte-buddy.version>1.17.7</byte-buddy.version>
+        <!-- 1.21.4 negotiates Docker API 1.44+; the 1.19 line managed by Boot 3.3 cannot talk to Docker Engine 29. -->
+        <testcontainers.version>1.21.4</testcontainers.version>
+        <!-- Security patches over Boot 3.5.16's managed versions: each is clean in OSV (checked 2026-11-05).
+             Re-run the OSV query in docs/SECURITY-DEPENDENCIES.md before bumping Spring Boot. -->
+        <jackson-bom.version>2.22.4</jackson-bom.version>
+        <tomcat.version>10.1.61</tomcat.version>
+        <log4j2.version>2.26.1</log4j2.version>
+        <commons-lang3.version>3.21.0</commons-lang3.version>
+        <postgresql.version>42.7.14</postgresql.version>
     </properties>
 
     <dependencies>
@@ -31,7 +43,7 @@
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-            <version>2.6.0</version>
+            <version>2.10.0</version>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -68,8 +80,24 @@
         </dependency>
 
         <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>3.0.8</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>

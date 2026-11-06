@@ -9,6 +9,13 @@ import java.util.Map;
  */
 final class PayloadSupport {
 
+    /**
+     * Maximum characters accepted for typed-channel brief text. Typed input is
+     * written by a human in one box, so an unbounded body is a mistake, not a
+     * brief; extracted PDF text has its own (higher) cap in the reader.
+     */
+    static final int MAX_TYPED_TEXT_CHARS = 5_000;
+
     private PayloadSupport() {
     }
 
@@ -23,6 +30,19 @@ final class PayloadSupport {
             throw new IllegalArgumentException("Missing required payload field: " + key);
         }
         return normalizeWhitespace(value.toString());
+    }
+
+    /**
+     * Reads a required text field with an upper length bound, so one pasted
+     * novel cannot become a brief. Exactly the limit is still accepted.
+     */
+    static String requireText(Map<String, Object> payload, String key, int maxLength) {
+        String text = requireText(payload, key);
+        if (text.length() > maxLength) {
+            throw new IllegalArgumentException(
+                    "Field " + key + " exceeds " + maxLength + " characters");
+        }
+        return text;
     }
 
     static String normalizeWhitespace(String text) {

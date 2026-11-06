@@ -1,250 +1,201 @@
 # backend-cotizaIA
 
-Backend + database for **CotizaIA** — an autonomous sales agent for agencies and freelancers that turns a messy client brief into a priced proposal (PDF), a draft contract, and a project schedule, ready for human review.
+Backend + database for **CotizaIA**, an AI quoting agent for agencies and freelancers. It turns a messy client
+brief (WhatsApp, email, web form or RFP PDF) into a priced proposal, contract and schedule, **estimated from the
+agency's own past projects** and left in an approval queue for a human.
 
-> Pipeline: messy brief → classified → requirements extracted → hours estimated → price calculated → proposal PDF + contract + schedule generated → approval queue (human approves in 5 min, not 3 hours).
+> Brief → classify → extract requirements → **retrieve similar past items (RAG)** → estimate hours from them,
+> with citations → price with the agency's rates → AI-drafted proposal grounded in past passages, with numbered
+> sources → human review (adjust, undo, approve) → send → every sent proposal becomes new memory.
 
-This repo is **backend + DB only**. Frontend lives elsewhere (see [Connecting a frontend](#connecting-a-frontend)).
+**Key rule: the AI proposes, the human approves.** The model never sets a price: hours come from the agency's own
+history (or its catalog), prices from its own rates through a pricing Strategy, and a validator stops any draft
+that mentions money, hours or numbers the client never gave.
+
+## Results
+
+| | Value |
+|---|---|
+| Tests | 540+ (JUnit 5, Spring Boot Test, Testcontainers PostgreSQL 16 + pgvector, MockRestServiceServer) |
+| Estimation error, offline eval (stub models) | **10.0 h MAE vs 21.0 h** for the fixed catalog: **52% lower** ([eval/report-stub.md](eval/report-stub.md)) |
+| Estimation error, real models (Groq gpt-oss-120b + Voyage voyage-4-lite) | **9.5 h MAE vs 21.0 h**: **55% lower**, 13/13 items estimated from memory with citations ([eval/report-groq.md](eval/report-groq.md)) |
+| Plaintext client data in a raw database dump | none (test scans every column of every table) |
+| Credentials readable from browser JavaScript | none (HttpOnly cookies; verified by a Playwright test in the frontend repo) |
+
+The eval corpus is **synthetic** (30 past proposals of a fictional agency, [seed/](seed/README.md)): it proves the
+mechanism end to end through the public API, not the accuracy for a real agency. Pass line fixed before building:
+agent MAE ≤ 0.70 × catalog MAE.
 
 ## Stack
 
 | Layer | Choice |
 |---|---|
-| Language / framework | Java 17 + Spring Boot 3.3 (Maven) |
-| Database | PostgreSQL 16 on **Supabase** (free tier, permanent); H2 in tests |
-| Migrations | Flyway (`V1`…`V19`), Hibernate only validates |
-| Security | Spring Security, stateless JWT (HS256), BCrypt |
-| AI (dev) | Ollama local, or the offline `stub` provider |
-| AI (prod) | Groq API (free) — same `LlmClient` interface, switched by `LLM_PROVIDER` |
-| PDF generation | OpenPDF |
-| API docs | springdoc-openapi (Swagger UI) |
-| Deploy | Docker → Render (free tier, $0) |
+| Language / framework | Java 17, Spring Boot 3.5 (Maven) |
+| Database | PostgreSQL 16 + **pgvector** on Supabase; H2 in unit tests, real PostgreSQL in Testcontainers |
+| Migrations | Flyway `V1`…`V27`, vendor-specific folder for pgvector; Hibernate only validates |
+| AI | `LlmClient` (Groq / Ollama / offline stub) + `EmbeddingClient` (Voyage / Ollama / stub), one provider family per deploy |
+| Security | Spring Security, JWT in HttpOnly cookies, CSRF double submit, rotating refresh tokens, AES-256-GCM field encryption, rate limits |
+| PDF | OpenPDF (generate), PDFBox (read) |
+| API docs | springdoc-openapi (off in production unless `SWAGGER_ENABLED=true`) |
+| CI | GitHub Actions: full suite, pgvector tests must not be skipped, gitleaks, OSV dependency scan |
+| Deploy | Docker → Render (free), Supabase (free) |
 
-Why Supabase Postgres over Render/Railway Postgres: Render's free database is **deleted after 30 days**; Railway has **no free tier**. Supabase free is permanent (500 MB, pauses after ~7 days idle, restorable). App hosts on Render free; data lives on Supabase.
-
-## Architecture
+## How the AI is used
 
 ```
-[Email / WhatsApp / Web form] ← Adapters normalize to Brief
-                │
-                ▼
-     API REST (thin controllers + DTOs, JWT, agency-scoped)
-                │
-                ▼
-        QuotationFacade          ← Facade: processBrief()
-                │
-   ┌────────────┼──────────────┐
-   ▼            ▼              ▼
-AgentPipeline Pricing       Documents
-(Chain of    (Strategy +   (Factory +
- Resp.)      Decorator)    Template Method)
-   │            │              │
-   └────────────┴──────────────┘
-                ▼
-        PostgreSQL (Supabase)
-                │
-                ▼
-   ProposalSubject (Observer) → owner email (simulated) / dashboard / analytics
-                +
-         LlmClient (Adapter)
-           ↙     ↓      ↘
-       Ollama   Groq   Stub
+                    ┌──────────── agency memory (pgvector, per agency) ────────────┐
+past proposal PDFs ─┤ grounded item extraction: an item counts only if its hours     │
+sent proposals ─────┤ literally appear on its page; passages for drafting          │
+(Observer)          └──────────────────────────────────────────────────────────────┘
+                                   ▲ retrieve (Voyage embeddings, cosine)
+brief ─▶ Classify ─▶ Extract ─▶ Retrieve ─▶ Estimate ─▶ Price ─▶ AmbiguityCheck ─▶ Generate ─▶ Compose
+         (LLM)       (LLM)                 memory →     rates     rules               LLM draft
+                                           catalog →    (no AI)                       + validator
+                                           default                                    + citations
 ```
 
-`QuotationFacade.processBrief()` is the facade the original plan called `CotizacionFacade.procesarBrief()`.
+- **Estimation from memory (RAG).** For each requirement the agent builds a query from the brief sentences that
+  mention it, retrieves the k most similar past items of the same type in the agency's memory and takes their
+  **similarity-weighted median** of approved hours. Fewer than 2 similar items → the catalog value; no catalog
+  value → a default flagged for review. Every estimate stores its source and citations
+  (document, page, similarity, hours) and the approval queue shows them.
+- **Learning from corrections.** When a human approves and sends a proposal, an Observer indexes the final,
+  human-corrected hours after the transaction commits. The next similar brief is estimated from them.
+- **Grounded drafting.** The proposal body is drafted by the model from the brief and the agency's past passages.
+  Each paragraph cites numbered sources. `ProposalDraftValidator` rejects money words, hour figures, numbers absent
+  from the brief, and citations outside the retrieved set; one retry with the violations, then a safe template.
+- **Guardrails against prompt injection.** Briefs, PDFs and passages are wrapped in tags and declared data, model
+  output is schema-validated, grounded and never rendered as HTML, and nothing the model writes reaches a price.
+- **Degrades instead of failing.** A memory outage flags the run and estimates from the catalog; provider rate
+  limits are retried honoring `Retry-After`; a failed run is logged with its execution id, step and cause, never
+  with client text.
 
-Key rule: **the AI proposes, the human approves.** Hours come from the agency's own catalog and the price from its own rates through a pricing Strategy; the agent never sets a price and never closes a deal.
+What the real-model runs taught (each fix is in the history with its evidence):
+1. The first run tied the catalog: a schema-only prompt made the model list every catalog entry with `"hours":0`;
+   the grounding check rejected all 240 invented items instead of storing them. The prompt now states the task.
+2. Free-tier limits (Groq 8K tokens/min, Voyage 3 requests/min) turned into 503s: retries now honor `Retry-After`,
+   and a failed run logs its step and cause.
+3. Groq's JSON mode sometimes answers 400 `json_validate_failed`: retried as the sampling accident it is.
+4. gpt-oss hidden reasoning burned the 200K tokens/day budget: reasoning effort is now configurable (`low`), which
+   keeps extraction exact at ~1K tokens per call.
 
-**Never half-write.** The agent run log (`agent_executions` + `agent_steps`) commits in its own transaction, so a failed run stays visible; business rows (requirements, quote, schedule, contract draft, PDFs, questions) are written in a separate short transaction only after the chain succeeds.
+## Security
 
-## Domain model (PostgreSQL)
-
-Table and column names are in **English**; content rows may be in Spanish.
-
-```
-Agency (pricing_model)
- ├── users                (AppUser: owner / staff, login_email + BCrypt password_hash)
- ├── roles → rates        (role → COP per hour, effective dating)
- ├── service_catalog → requirement_types   (keywords + estimated hours)
- ├── clients
- │     └── briefs
- │           ├── brief_questions           (ambiguity questions, OPEN / RESOLVED)
- │           ├── extracted_requirements
- │           ├── agent_executions → agent_steps   (pipeline run log)
- │           └── proposals (status, pricing_model, approved_at)
- │                  ├── quoted_items
- │                  ├── proposal_extras         (urgency +25%, discount −10%, warranty…)
- │                  ├── proposal_status_changes (audit trail of the State machine)
- │                  ├── proposal_documents      (3 PDFs: proposal, contract, schedule)
- │                  ├── schedules → phases → phase_dependencies
- │                  ├── contracts → clauses
- │                  └── payments                (50% deposit, SIMULATED)
- └── notifications        (one row per observer per state change)
-```
-
-Proposal lifecycle (`State` pattern — illegal transitions return **422**):
-
-```
-RECEIVED → ANALYZING → QUOTED → IN_REVIEW → SENT → NEGOTIATING → ACCEPTED → CONTRACT_ISSUED
-                                     ↘ REJECTED      ↘ REJECTED
-            (EXPIRED reachable from every open state)
-```
-
-When the human edits hours in the approval queue, the schedule **recalculates in cascade** and the approval is cleared until the quote is approved again.
-
-## Design patterns (implemented)
-
-| Category | Pattern | Where (real classes) |
+| Threat | Control | Proven by |
 |---|---|---|
-| Creational | Builder | `domain.Proposal.Builder` |
-| Creational | Singleton | `config.RateConfiguration` (shared rate cache) |
-| Creational | Factory | `document.DocumentFactory` — returns the generator for a `DocumentType` (EnumMap, no branching) |
-| Structural | Facade | `facade.QuotationFacade.processBrief()` |
-| Structural | Adapter | Input channels `ingest.*BriefAdapter`; LLM `agent.llm.OllamaClient` / `GroqClient` / `StubLlmClient` behind `LlmClient`; `payment.SimulatedPaymentGateway` behind `PaymentGateway` |
-| Structural | Decorator | Price extras `domain.UrgencyDecorator` / `DiscountDecorator` / `ExtendedWarrantyDecorator`; `agent.llm.RetryLlmClient` (retries around any `LlmClient`) |
-| Behavioral | State | `domain.state.ProposalState` + 10 concrete states; `Proposal` is the context |
-| Behavioral | Observer | `notification.ProposalSubject` → `OwnerEmailObserver`, `DashboardObserver`, `AnalyticsObserver` |
-| Behavioral | Strategy | `pricing.PricingStrategy` → `HourlyStrategy`, `FixedPriceStrategy`, `PhasedStrategy`, chosen by `PricingStrategyResolver` |
-| Behavioral | Chain of Responsibility | `agent.pipeline.PipelineHandler` → Classify → Extract → Estimate → Price → AmbiguityCheck → Generate → Compose |
-| Behavioral | Template Method | `document.AbstractDocumentTemplate` (shared header/footer, per-document sections); `agent.PipelineRunRecorder` (run-log skeleton) |
+| Database dump / backup leak | AES-256-GCM on every client and agency content column (key id inside the ciphertext for rotation); HMAC blind index for email lookups | `EncryptionAtRestTests` (raw JDBC scan of all tables) |
+| Token theft from the browser (XSS, devtools) | JWT (15 min) and refresh token (7 days, stored as SHA-256) only in `HttpOnly; Secure; SameSite=Strict` cookies; no token in any response body | `AuthCookieTests`, frontend Playwright test |
+| CSRF | Double-submit `XSRF-TOKEN` on every cookie-authenticated write | `AuthCookieTests` |
+| Refresh token replay | Rotation with reuse detection: a replayed token revokes its whole family | `AuthCookieTests` |
+| Brute force / cost abuse | 429 + `Retry-After`: per client IP on auth, per agency on every LLM endpoint | `RateLimitTests` |
+| Cross-tenant access | Every query and vector search filtered by the caller's agency; foreign ids answer 404 | controller tests, `VectorStoreContract` |
+| Leaking internals | No stack traces or exception messages in responses; docs and actuator details off in production | `ProductionProfileTests` |
+| Secrets in git | Everything from the environment; gitleaks in CI; app refuses to start without its keys | CI, `CryptoConfigurationTests` |
+| Vulnerable dependencies | Spring Boot 3.5.16 + patched Jackson, Tomcat, Log4j API, commons-lang3, PostgreSQL driver; CI queries OSV.dev for every runtime dependency and fails on any advisory not accepted in `security/osv-allowlist.txt` (reason + review date) | CI step, `scripts/osv_check.py` |
+
+**Data classification.** Encrypted: agency and user names and emails, client name/email/company, brief text and
+payload, uploaded files, questions and answers, extracted requirements, agent step summaries, proposal texts,
+drafts and PDFs, command history, notifications, knowledge passages and document names. Plaintext on purpose:
+ids, foreign keys, statuses, dates, hours and amounts (aggregated in SQL by analytics and pricing), catalog/role
+names (agency configuration looked up by name), contract clause templates, embedding vectors (similarity search
+needs them; mitigated by per-agency filtering and database credentials).
+
+Limitation: rate-limit counters live in memory, per instance. With more than one instance they need a shared store
+(Redis / Bucket4j). Render free runs one.
+
+## Design patterns
+
+17 GoF patterns, each in real behavior and each with a test that checks its defining property.
+
+| Category | Pattern | Where | Test |
+|---|---|---|---|
+| Creational | Singleton | `config.RateConfiguration` (holder idiom, shared rate cache) | `RateConfigurationSingletonTests` |
+| Creational | Builder | `domain.Proposal.Builder` | `ProposalBuilderTests` |
+| Creational | Factory Method | `agent.knowledge.KnowledgeIngestor.createChunker()` → PDF / approved-proposal chunkers | `ProposalPdfIngestorTests` |
+| Creational | Abstract Factory | `agent.embedding.AiProviderFactory` → `{LlmClient, EmbeddingClient}` families (stub / cloud / ollama) | `AiProviderFactoryTests` |
+| Creational | Prototype | `domain.Proposal.copy()`: revision v2 of a negotiated proposal, deep copy, v1 frozen | `ProposalPrototypeTests` |
+| Structural | Adapter | `GroqClient` / `OllamaClient` behind `LlmClient`; `VoyageEmbeddingClient` behind `EmbeddingClient`; brief channel adapters; `SimulatedPaymentGateway` | `GroqClientTests`, `VoyageEmbeddingClientTests`, `BriefSourceAdapterTests` |
+| Structural | Bridge | `KnowledgeRetriever` (past items / passages) × `VectorStore` (pgvector / portable JDBC) | `KnowledgeRetrieverTests`, `VectorStoreContract` on H2 and real PostgreSQL |
+| Structural | Composite | `document.DocumentNode`: section / paragraph / bullet list tree of the drafted PDF | `DocumentNodeTests` |
+| Structural | Decorator | Price extras (urgency, discount, warranty); `RetryLlmClient`; `RetryEmbeddingClient` | `ProposalPricingDecoratorTests`, `RetryLlmClientTests`, `RetryEmbeddingClientTests` |
+| Structural | Facade | `facade.QuotationFacade.processBrief()` | `QuotationFacadeIntegrationTests` |
+| Structural | Proxy | `agent.embedding.CachingEmbeddingClient` (LRU cache in front of the paid embedder) | `CachingEmbeddingClientTests` |
+| Behavioral | Chain of Responsibility | 8 pipeline handlers, Classify → … → Compose | `PipelineHandlerTests`, `AgentPipelineIntegrationTests` |
+| Behavioral | Command | `service.command.AdjustHoursCommand` + `CommandHistory` (undo hour edits) | `AdjustHoursCommandTests`, `ProposalRevisionAndUndoFlowTests` |
+| Behavioral | Observer | `notification.ProposalSubject` → email, dashboard, analytics and `KnowledgeObserver` (learning loop) | `ProposalSubjectTests`, `KnowledgeObserverTests` |
+| Behavioral | State | `domain.state.*`: 10 proposal states, illegal moves → 422 | `ProposalStateTransitionTests` |
+| Behavioral | Strategy | Pricing (hourly / fixed / phased); estimation (memory → catalog → default) | `PricingStrategyTests`, `RetrievalEstimationTests` |
+| Behavioral | Template Method | `AbstractDocumentTemplate`; `PipelineRunRecorder`; `KnowledgeIngestor.ingest()` | `DocumentGeneratorTests`, `PipelineRunRecorderTests` |
+
+`document.DocumentFactory` is a Simple Factory (a registry), labelled as such.
 
 ## Run locally
 
 ```bash
-# 1. Database (Docker) — or point SPRING_DATASOURCE_* at Supabase
+# 1. PostgreSQL 16 + pgvector
 docker compose up -d
 
-# 2. Run with the offline AI stub (no internet, deterministic answers)
-LLM_PROVIDER=stub ./mvnw spring-boot:run          # PowerShell: $env:LLM_PROVIDER='stub'; .\mvnw.cmd spring-boot:run
+# 2. Keys (no defaults: the app refuses to start without them)
+export DATA_ENCRYPTION_KEY=$(openssl rand -base64 32) BLIND_INDEX_KEY=$(openssl rand -base64 32)
 
-# Optional: real local AI
-#   ollama pull llama3.1  &&  LLM_PROVIDER=ollama ./mvnw spring-boot:run
+# 3. Offline, deterministic AI (no network)
+LLM_PROVIDER=stub ./mvnw spring-boot:run
+# Real models: LLM_PROVIDER=groq with GROQ_API_KEY and VOYAGE_API_KEY
 ```
 
-- API: `http://localhost:8080` · Swagger UI: `http://localhost:8080/swagger-ui.html` · Health: `/actuator/health`
-- Flyway creates the schema on startup. Without `JWT_SECRET` a random dev key is generated (tokens die on restart).
-- Tests (H2, stub AI, no external services): `./mvnw test`
-- All variables are listed in [`.env.example`](.env.example).
+- Tests: `./mvnw test` (Docker needed for the PostgreSQL + pgvector tests; they are skipped without it locally,
+  and CI fails if they are skipped).
+- Real-model eval (~20 min on free tiers): `GROQ_API_KEY=… VOYAGE_API_KEY=… ./mvnw test -Dtest=EstimationEvalTests -Deval.provider=groq`
+  → `target/eval/report.md`.
+- Seed corpus: `python3 seed/tools/gen_manifest.py && python3 seed/tools/check_content.py && python3 seed/tools/render_pdfs.py`.
+- All variables: [`.env.example`](.env.example). Specs for every feature: [`docs/specs/`](docs/specs/).
 
 ## API
 
-All endpoints except auth, health and Swagger require `Authorization: Bearer <token>` and only see the caller's agency.
+Every endpoint except auth, health and docs needs a session and only sees the caller's agency. Browsers use the
+cookies; scripts may send `Authorization: Bearer <token>` instead (no CSRF needed then).
 
 | Method | Endpoint | Description |
 |---|---|---|
-| POST | `/api/auth/register` | Create agency + owner, returns token |
-| POST | `/api/auth/login` | Email + password → token |
-| GET | `/api/auth/me` | Current user / agency |
-| POST | `/api/quotations` | **Star path**: ingest a brief and run the whole pipeline in one call |
-| POST | `/api/briefs` | Ingest a brief only (EMAIL / WHATSAPP / WEB_FORM payloads) |
-| GET | `/api/briefs/{id}` | Brief + ambiguity questions + latest proposal + executions |
-| POST | `/api/briefs/{id}/process` | Run (or re-run) the pipeline on a brief |
-| POST | `/api/briefs/{id}/questions/{questionId}/answer` | Answer a question; the chain re-runs |
-| GET | `/api/proposals` (`?status=`) | Agency proposals |
-| GET | `/api/proposals/queue` | Approval queue (IN_REVIEW, oldest first) |
-| GET | `/api/proposals/{id}` | Detail: items, totals, schedule, history, documents, payment |
-| PUT | `/api/proposals/{id}/items/{itemId}` | Adjust hours (schedule cascades) |
-| POST | `/api/proposals/{id}/approve` | Human approval → final PDFs regenerated |
-| POST | `/api/proposals/{id}/send` · `/negotiate` · `/reject` · `/expire` | Lifecycle moves (State pattern) |
-| POST | `/api/proposals/{id}/accept` | Accept → simulated 50% deposit → contract issued |
-| GET | `/api/proposals/{id}/documents` · `/documents/{type}` | List / download PDFs (PROPOSAL, CONTRACT, SCHEDULE) |
-| CRUD | `/api/catalog`, `/api/catalog/{id}/requirement-types` | Service catalog |
-| CRUD | `/api/roles`, `/api/roles/{id}/rates`, `/api/rates/{id}` | Roles and hourly rates |
-| GET/PUT | `/api/agency/pricing-model` | Default pricing Strategy (FIXED / HOURLY / PHASED) |
-| CRUD | `/api/clients` | Clients |
-| GET | `/api/analytics` | Avg response time, acceptance rate, proposals by status |
-| GET | `/api/notifications` | Dashboard feed |
-| GET | `/api/executions?briefId=` · `/api/executions/{id}` | Agent run log (live pipeline view) |
-| GET | `/actuator/health` | Health check (public) |
+| POST | `/api/auth/register` · `/login` | Create agency + owner / log in. Sets `cz_access` + `cz_refresh` HttpOnly cookies; the body has no token |
+| POST | `/api/auth/refresh` · `/logout` | Rotate / revoke the session (CSRF required) |
+| GET | `/api/auth/csrf` · `/me` | Issue the `XSRF-TOKEN` cookie / current identity |
+| POST | `/api/quotations` | Star path: ingest a brief and run the whole agent in one call |
+| GET · POST | `/api/briefs` | List (newest first) / ingest a brief (EMAIL, WHATSAPP, WEB_FORM) |
+| POST | `/api/briefs/upload` | Brief from an RFP PDF |
+| GET | `/api/briefs/{id}` · `/{id}/attachment` | Detail with questions and executions / original PDF |
+| POST | `/api/briefs/{id}/process` · `/{id}/questions/{qid}/answer` | Run (again) / answer a question and re-run |
+| POST · GET · DELETE | `/api/knowledge/documents` | Upload a past proposal PDF as memory / list / delete |
+| GET | `/api/knowledge/search?q=&type=&k=` | Search the agency's memory (with citations) |
+| GET | `/api/proposals` · `/queue` · `/{id}` | List / approval queue / detail with items, estimate sources, citations, draft, history, documents |
+| PUT | `/api/proposals/{id}/items/{itemId}` | Adjust hours (schedule cascades; recorded as an undoable command) |
+| POST | `/api/proposals/{id}/undo` · GET `/{id}/commands` | Undo the last edit / edit history |
+| POST | `/api/proposals/{id}/approve` · `/send` · `/negotiate` · `/accept` · `/reject` · `/expire` | Lifecycle (State pattern) |
+| POST | `/api/proposals/{id}/revise` | Revision v2 of a negotiated proposal (Prototype) |
+| GET | `/api/proposals/{id}/documents` · `/documents/{type}` | PROPOSAL, CONTRACT, SCHEDULE PDFs |
+| CRUD | `/api/catalog`, `/api/roles`, `/api/rates`, `/api/clients`, `/api/agency/pricing-model` | Agency configuration |
+| GET | `/api/analytics` · `/api/notifications` · `/api/executions` | Dashboard, feed, agent run log |
+| GET | `/actuator/health` | Health check (public, no details) |
 
-The full, always-current contract is the OpenAPI document at `/v3/api-docs`. The caller's identity (user, agency, role) comes only from the JWT, so no operation declares it as a parameter; `GET /api/auth/me` takes no input besides the bearer token.
-
-Controllers map one resource each: `RoleController` owns `/api/roles/**` (including the rates nested under a role) and `RateController` owns `/api/rates/{id}`.
-
-## Connecting a frontend
-
-1. **Auth:** `POST /api/auth/register` or `/api/auth/login` → store `token`; send `Authorization: Bearer <token>` on every call. Tokens expire after `JWT_TTL` (default 8 h) → re-login on 401.
-2. **CORS:** set `CORS_ALLOWED_ORIGINS` to the exact frontend origins, comma-separated (e.g. `http://localhost:5173,https://cotizaia.vercel.app`). No wildcard is allowed.
-3. **Client generation:** point OpenAPI Generator / Orval at `/v3/api-docs` to get typed clients.
-4. **Errors:** every failure, including framework-level ones, is JSON `{"error": "...", "fields": {...}}` (`fields` only on validation). Internal details (class names, stack traces) are never returned.
-
-| Status | Meaning |
-|---|---|
-| 400 | Validation failed (body or parameters), malformed JSON, bad parameter type (`/api/proposals/abc`, unknown enum), missing required parameter |
-| 401 | Missing, invalid or expired token; wrong credentials |
-| 403 | Authenticated but not allowed |
-| 404 | Not found **or belongs to another agency**; unknown route |
-| 405 | HTTP method not supported on that path |
-| 409 | Conflict (duplicate email, data in use, not approved yet) |
-| 415 | Unsupported `Content-Type` (send `application/json`) |
-| 422 | Illegal lifecycle move (includes `from` and `to`) |
-| 500 | Unexpected server error (logged server-side, generic message) |
-| 503 | Agent pipeline failed (includes `executionId` to inspect the run log) |
-
-5. **PDFs:** `GET /api/proposals/{id}/documents/{type}` returns `application/pdf` with `Content-Disposition` (exposed by CORS).
-
-## Database
-
-- Flyway owns the schema (`src/main/resources/db/migration`); Hibernate runs `ddl-auto: validate`, so the app refuses to start against an out-of-date schema.
-- **Supabase:** Project settings → Database → Connection pooling. Use the JDBC form:
-  `SPRING_DATASOURCE_URL=jdbc:postgresql://aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=require`,
-  `SPRING_DATASOURCE_USERNAME=postgres.<project-ref>`, `SPRING_DATASOURCE_PASSWORD=<password>`.
-- **Local:** `docker compose up -d` (Postgres 16, user/db/password `cotizaia`, matching `application.yml`).
+Errors are always JSON `{"error": "..."}`: 400 validation, 401 no session, 403 missing CSRF token, 404 not found
+or another agency's, 409 conflict, 413 file too large, 422 illegal lifecycle move, 429 rate limited (with
+`Retry-After`), 503 agent run failed (with `executionId`).
 
 ## Deploy (free)
 
-1. Push to GitHub, then in Render: **New → Blueprint** and select this repo (`render.yaml`).
-2. Fill the secret variables Render asks for: `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `GROQ_API_KEY`, `JWT_SECRET` (≥ 32 random chars), `CORS_ALLOWED_ORIGINS`.
-3. Render builds the `Dockerfile` (profile `prod`, heap capped for 512 MB) and probes `/actuator/health`.
+1. Supabase: create the project; `V24` enables `vector`. **Start from an empty database**: rows written before
+   encryption at rest cannot be decrypted.
+2. Render → New → Blueprint with this repo (`render.yaml`). Secrets: `SPRING_DATASOURCE_URL`,
+   `SPRING_DATASOURCE_USERNAME`, `SPRING_DATASOURCE_PASSWORD`, `JWT_SECRET` (≥ 32 chars), `DATA_ENCRYPTION_KEY`,
+   `BLIND_INDEX_KEY` (`openssl rand -base64 32` each), `GROQ_API_KEY`, `VOYAGE_API_KEY`, `CORS_ALLOWED_ORIGINS`.
+3. The frontend static site proxies `/api/*` to the backend (same origin, so `SameSite=Strict` cookies work) and
+   sends a strict CSP and security headers.
+4. Seed the demo memory: upload the PDFs in `seed/pdf/train/` through `POST /api/knowledge/documents`.
 
-**Live URL:** _pending first deploy_
-
-### Defense-day checklist
-
-- Render free **sleeps after ~15 min idle**: the first request takes ~30–60 s. Open `/actuator/health` a few minutes before presenting.
-- Supabase free **pauses after ~7 days idle**: open the Supabase dashboard the day before and restore the project if paused.
-- Keep `LLM_PROVIDER=stub` as a fallback if Groq is unreachable — the demo still runs end to end.
-
-## Demo script (star path, issue #21)
-
-```bash
-BASE=http://localhost:8080
-# 1. Register → token
-TOKEN=$(curl -s -X POST $BASE/api/auth/register -H 'Content-Type: application/json' \
-  -d '{"agencyName":"Agencia Demo","ownerFullName":"Ana","email":"ana@demo.co","password":"secret123"}' | jq -r .token)
-AUTH="Authorization: Bearer $TOKEN"
-
-# 2. Setup: client, catalog (keywords drive extraction), roles + rates
-curl -s -X POST $BASE/api/clients -H "$AUTH" -H 'Content-Type: application/json' -d '{"name":"Restaurante El Sabor"}'
-curl -s -X POST $BASE/api/catalog -H "$AUTH" -H 'Content-Type: application/json' -d '{"name":"Desarrollo web"}'
-curl -s -X POST $BASE/api/catalog/1/requirement-types -H "$AUTH" -H 'Content-Type: application/json' \
-  -d '{"name":"Sistema de reservas","description":"reserva, reservas, agenda","estimatedHours":32}'
-curl -s -X POST $BASE/api/roles -H "$AUTH" -H 'Content-Type: application/json' -d '{"name":"Developer"}'
-curl -s -X POST $BASE/api/roles/1/rates -H "$AUTH" -H 'Content-Type: application/json' -d '{"copPerHour":100000}'
-
-# 3. One call: brief → quoted proposal + 3 PDFs + ambiguity questions
-curl -s -X POST $BASE/api/quotations -H "$AUTH" -H 'Content-Type: application/json' -d '{"source":"WEB_FORM","clientId":1,
- "payload":{"description":"Tengo un restaurante y necesito una pagina web donde vean el menu y hagan reservas en linea"}}'
-#   → proposalStatus IN_REVIEW, total > 0, documents [PROPOSAL, CONTRACT, SCHEDULE],
-#     questions PAGE_COUNT_MISSING + DEADLINE_MISSING (non-blocking)
-
-# 4. Human review: queue → approve → send → accept
-curl -s $BASE/api/proposals/queue -H "$AUTH"
-curl -s -X POST $BASE/api/proposals/1/approve -H "$AUTH"
-curl -s -X POST $BASE/api/proposals/1/send -H "$AUTH"
-curl -s -X POST $BASE/api/proposals/1/accept -H "$AUTH"     # → CONTRACT_ISSUED, deposit = 50% total, simulated: true
-curl -s $BASE/api/analytics -H "$AUTH"                      # → sentCount 1, acceptedCount 1, acceptanceRate 1.0000
-```
-
-(With the default `stub` provider the extraction is keyword-based and fully reproducible.)
+Defense day: Render free sleeps after ~15 min idle (open `/actuator/health` a few minutes before); Supabase free
+pauses after ~7 idle days; `LLM_PROVIDER=stub` keeps the demo running without network.
 
 ## Simulated payments
 
-**No real money moves.** Accepting a proposal records a 50% deposit through `SimulatedPaymentGateway`, which never contacts any processor. Database `CHECK` constraints force `provider = 'SIMULATED'` and `simulated = TRUE`, and every PDF footer states it.
-
-## Course requirements covered
-
-- Backend in **Java** (Spring Boot), AI isolated in `agent/` with a swappable provider (a test enforces that `domain`, `pricing`, `service`, `document`, `notification` and `payment` never import it)
-- **11 design patterns** implemented in real behavior (table above), including the investigated Chain of Responsibility and Template Method
-- Real-life case study: interview a local agency/freelancer for before/after quoting-time numbers
-- Deployable to production at $0 (Render + Supabase + Groq)
+No real money moves. Accepting a proposal records a 50% deposit through `SimulatedPaymentGateway`; database
+`CHECK` constraints force `provider = 'SIMULATED'`, and every PDF footer says so.

@@ -1,7 +1,9 @@
 package com.cotizaia.domain;
 
 import com.cotizaia.document.DocumentType;
+import com.cotizaia.crypto.EncryptedBytesConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -43,6 +45,7 @@ public class ProposalDocument {
     @Column(name = "content_type", nullable = false, length = 60)
     private String contentType = "application/pdf";
 
+    @Convert(converter = EncryptedBytesConverter.class)
     @Column(nullable = false, columnDefinition = "BYTEA")
     private byte[] content;
 

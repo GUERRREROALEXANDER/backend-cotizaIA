@@ -19,7 +19,7 @@ public class WebFormBriefAdapter implements BriefSource {
 
     @Override
     public NormalizedBrief normalize(Map<String, Object> payload) {
-        String description = PayloadSupport.requireText(payload, "description");
+        String description = PayloadSupport.requireText(payload, "description", PayloadSupport.MAX_TYPED_TEXT_CHARS);
         String projectType = optionalText(payload, "projectType");
         String text = projectType == null ? description : projectType + ": " + description;
         return new NormalizedBrief(text);

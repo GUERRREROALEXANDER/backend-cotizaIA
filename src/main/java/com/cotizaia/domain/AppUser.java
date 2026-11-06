@@ -1,6 +1,8 @@
 package com.cotizaia.domain;
 
+import com.cotizaia.crypto.EncryptedStringConverter;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -28,7 +30,7 @@ import java.util.Locale;
         uniqueConstraints = {
                 @UniqueConstraint(name = "uq_users_agency_email", columnNames = {"agency_id", "email"}),
                 @UniqueConstraint(name = "uq_users_agency_owner", columnNames = {"agency_id", "owner_flag"}),
-                @UniqueConstraint(name = "uq_users_login_email", columnNames = "login_email")
+                @UniqueConstraint(name = "uq_users_login_email_hash", columnNames = "login_email_hash")
         })
 public class AppUser {
 
@@ -40,18 +42,27 @@ public class AppUser {
     @JoinColumn(name = "agency_id", nullable = false)
     private Agency agency;
 
+    @Convert(converter = EncryptedStringConverter.class)
     @Column(name = "full_name", nullable = false)
     private String fullName;
 
+    @Convert(converter = EncryptedStringConverter.class)
     @Column(nullable = false)
     private String email;
+
+    @Column(name = "email_hash", length = 64)
+    private String emailHash;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private UserRole role;
 
+    @Convert(converter = EncryptedStringConverter.class)
     @Column(name = "login_email", length = 255)
     private String loginEmail;
+
+    @Column(name = "login_email_hash", length = 64)
+    private String loginEmailHash;
 
     @Column(name = "password_hash", length = 100)
     private String passwordHash;
@@ -127,6 +138,22 @@ public class AppUser {
 
     public void setEmail(String email) {
         this.email = email;
+    }
+
+    public String getEmailHash() {
+        return emailHash;
+    }
+
+    public void setEmailHash(String emailHash) {
+        this.emailHash = emailHash;
+    }
+
+    public String getLoginEmailHash() {
+        return loginEmailHash;
+    }
+
+    public void setLoginEmailHash(String loginEmailHash) {
+        this.loginEmailHash = loginEmailHash;
     }
 
     public UserRole getRole() {

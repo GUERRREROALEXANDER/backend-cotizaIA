@@ -1,0 +1,1321 @@
+{
+  "notice": "SYNTHETIC SAMPLE DATA - fictional agency, clients and numbers, generated for evaluation",
+  "seed": 20261105,
+  "agency": "Estudio Nariño Digital (agencia ficticia)",
+  "rateCopPerHour": 95000,
+  "catalog": [
+    {
+      "name": "Sitio web informativo",
+      "keywords": "pagina web, sitio, paginas, landing, informativo",
+      "catalogHours": 30
+    },
+    {
+      "name": "Tienda en linea",
+      "keywords": "tienda, ecommerce, productos, carrito, catalogo",
+      "catalogHours": 60
+    },
+    {
+      "name": "Sistema de reservas",
+      "keywords": "reserva, reservas, agenda, citas, turnos",
+      "catalogHours": 32
+    },
+    {
+      "name": "Pasarela de pagos",
+      "keywords": "pagos, pasarela, PSE, tarjeta, Wompi, PayU",
+      "catalogHours": 16
+    },
+    {
+      "name": "Blog y gestor de contenidos",
+      "keywords": "blog, noticias, articulos, gestor de contenidos",
+      "catalogHours": 12
+    },
+    {
+      "name": "Integracion WhatsApp",
+      "keywords": "whatsapp, chat, mensajes, notificaciones",
+      "catalogHours": 10
+    },
+    {
+      "name": "Sitio multilenguaje",
+      "keywords": "idiomas, ingles, traduccion, multilenguaje",
+      "catalogHours": 12
+    },
+    {
+      "name": "Identidad de marca",
+      "keywords": "logo, marca, branding, manual de marca, papeleria",
+      "catalogHours": 40
+    },
+    {
+      "name": "Panel administrativo",
+      "keywords": "panel, administracion, dashboard, inventario, reportes",
+      "catalogHours": 40
+    },
+    {
+      "name": "SEO inicial",
+      "keywords": "seo, google, posicionamiento, buscadores",
+      "catalogHours": 8
+    }
+  ],
+  "projects": [
+    {
+      "projectId": "P01",
+      "sector": "taller de motos",
+      "city": "Pasto",
+      "channel": "EMAIL",
+      "items": [
+        {
+          "itemId": "P01-I1",
+          "requirementType": "Tienda en linea",
+          "drivers": {
+            "productos": 150,
+            "migracion_desde_excel": false
+          },
+          "catalogHours": 60,
+          "approvedHours": 50,
+          "lineTotalCop": 4750000
+        },
+        {
+          "itemId": "P01-I2",
+          "requirementType": "Pasarela de pagos",
+          "drivers": {
+            "pasarelas": [
+              "Nequi"
+            ]
+          },
+          "catalogHours": 16,
+          "approvedHours": 13,
+          "lineTotalCop": 1235000
+        },
+        {
+          "itemId": "P01-I3",
+          "requirementType": "Sistema de reservas",
+          "drivers": {
+            "sedes": 3,
+            "sincroniza_google_calendar": true
+          },
+          "catalogHours": 32,
+          "approvedHours": 57,
+          "lineTotalCop": 5415000
+        }
+      ],
+      "totalHours": 120,
+      "totalCop": 11400000,
+      "split": "train"
+    },
+    {
+      "projectId": "P02",
+      "sector": "clinica odontologica",
+      "city": "Tumaco",
+      "channel": "WEB_FORM",
+      "items": [
+        {
+          "itemId": "P02-I1",
+          "requirementType": "Sitio web informativo",
+          "drivers": {
+            "paginas": 5,
+            "diseno_a_medida": true
+          },
+          "catalogHours": 30,
+          "approvedHours": 46,
+          "lineTotalCop": 4370000
+        },
+        {
+          "itemId": "P02-I2",
+          "requirementType": "Sistema de reservas",
+          "drivers": {
+            "sedes": 4,
+            "sincroniza_google_calendar": true
+          },
+          "catalogHours": 32,
+          "approvedHours": 61,
+          "lineTotalCop": 5795000
+        },
+        {
+          "itemId": "P02-I3",
+          "requirementType": "SEO inicial",
+          "drivers": {
+            "paginas_a_optimizar": 9
+          },
+          "catalogHours": 8,
+          "approvedHours": 17,
+          "lineTotalCop": 1615000
+        }
+      ],
+      "totalHours": 124,
+      "totalCop": 11780000,
+      "split": "train"
+    },
+    {
+      "projectId": "P03",
+      "sector": "libreria",
+      "city": "Tuquerres",
+      "channel": "WHATSAPP",
+      "items": [
+        {
+          "itemId": "P03-I1",
+          "requirementType": "Sitio web informativo",
+          "drivers": {
+            "paginas": 3,
+            "diseno_a_medida": true
+          },
+          "catalogHours": 30,
+          "approvedHours": 31,
+          "lineTotalCop": 2945000
+        },
+        {
+          "itemId": "P03-I2",
+          "requirementType": "Integracion WhatsApp",
+          "drivers": {
+            "tipo": "boton de chat"
+          },
+          "catalogHours": 10,
+          "approvedHours": 6,
+          "lineTotalCop": 570000
+        },
+        {
+          "itemId": "P03-I3",
+          "requirementType": "SEO inicial",
+          "drivers": {
+            "paginas_a_optimizar": 6
+          },
+          "catalogHours": 8,
+          "approvedHours": 12,
+          "lineTotalCop": 1140000
+        },
+        {
+          "itemId": "P03-I4",
+          "requirementType": "Identidad de marca",
+          "drivers": {
+            "alcance": "manual completo con papeleria"
+          },
+          "catalogHours": 40,
+          "approvedHours": 72,
+          "lineTotalCop": 6840000
+        }
+      ],
+      "totalHours": 121,
+      "totalCop": 11495000,
+      "split": "train"
+    },
+    {
+      "projectId": "P04",
+      "sector": "taller de motos",
+      "city": "Tuquerres",
+      "channel": "WEB_FORM",
+      "items": [
+        {
+          "itemId": "P04-I1",
+          "requirementType": "Sitio web informativo",
+          "drivers": {
+            "paginas": 4,
+            "diseno_a_medida": false
+          },
+          "catalogHours": 30,
+          "approvedHours": 29,
+          "lineTotalCop": 2755000
+        },
+        {
+          "itemId": "P04-I2",
+          "requirementType": "Integracion WhatsApp",
+          "drivers": {
+            "tipo": "boton de chat"
+          },
+          "catalogHours": 10,
+          "approvedHours": 6,
+          "lineTotalCop": 570000
+        },
+        {
+          "itemId": "P04-I3",
+          "requirementType": "Pasarela de pagos",
+          "drivers": {
+            "pasarelas": [
+              "PayU",
+              "Nequi"
+            ]
+          },
+          "catalogHours": 16,
+          "approvedHours": 26,
+          "lineTotalCop": 2470000
+        },
+        {
+          "itemId": "P04-I4",
+          "requirementType": "Panel administrativo",
+          "drivers": {
+            "modulos": 4
+          },
+          "catalogHours": 40,
+          "approvedHours": 37,
+          "lineTotalCop": 3515000
+        }
+      ],
+      "totalHours": 98,
+      "totalCop": 9310000,
+      "split": "train"
+    },
+    {
+      "projectId": "P05",
+      "sector": "ferreteria",
+      "city": "Pasto",
+      "channel": "EMAIL",
+      "items": [
+        {
+          "itemId": "P05-I1",
+          "requirementType": "Sitio web informativo",
+          "drivers": {
+            "paginas": 4,
+            "diseno_a_medida": false
+          },
+          "catalogHours": 30,
+          "approvedHours": 33,
+          "lineTotalCop": 3135000
+        },
+        {
+          "itemId": "P05-I2",
+          "requirementType": "Blog y gestor de contenidos",
+          "drivers": {
+            "roles_de_editor": 2
+          },
+          "catalogHours": 12,
+          "approvedHours": 15,
+          "lineTotalCop": 1425000
+        }
+      ],
+      "totalHours": 48,
+      "totalCop": 4560000,
+      "split": "train"
+    },
+    {
+      "projectId": "P06",
+      "sector": "clinica odontologica",
+      "city": "Pasto",
+      "channel": "WHATSAPP",
+      "items": [
+        {
+          "itemId": "P06-I1",
+          "requirementType": "Sitio web informativo",
+          "drivers": {
+            "paginas": 5,
+            "diseno_a_medida": true
+          },
+          "catalogHours": 30,
+          "approvedHours": 45,
+          "lineTotalCop": 4275000
+        },
+        {
+          "itemId": "P06-I2",
+          "requirementType": "Sistema de reservas",
+          "drivers": {
+            "sedes": 4,
+            "sincroniza_google_calendar": false
+          },
+          "catalogHours": 32,
+          "approvedHours": 55,
+          "lineTotalCop": 5225000
+        }
+      ],
+      "totalHours": 100,
+      "totalCop": 9500000,
+      "split": "train"
+    },
+    {
+      "projectId": "P07",
+      "sector": "hotel boutique",
+      "city": "Tumaco",
+      "channel": "WEB_FORM",
+      "items": [
+        {
+          "itemId": "P07-I1",
+          "requirementType": "Sitio web informativo",
+          "drivers": {
+            "paginas": 3,
+            "diseno_a_medida": true
+          },
+          "catalogHours": 30,
+          "approvedHours": 34,
+          "lineTotalCop": 3230000
+        },
+        {
+          "itemId": "P07-I2",
+          "requirementType": "Integracion WhatsApp",
+          "drivers": {
+            "tipo": "bot con notificaciones automaticas"
+          },
+          "catalogHours": 10,
+          "approvedHours": 26,
+          "lineTotalCop": 2470000
+        }
+      ],
+      "totalHours": 60,
+      "totalCop": 5700000,
+      "split": "holdout"
+    },
+    {
+      "projectId": "P08",
+      "sector": "estudio de abogados",
+      "city": "Cali",
+      "channel": "EMAIL",
+      "items": [
+        {
+          "itemId": "P08-I1",
+          "requirementType": "Tienda en linea",
+          "drivers": {
+            "productos": 300,
+            "migracion_desde_excel": true
+          },
+          "catalogHours": 60,
+          "approvedHours": 70,
+          "lineTotalCop": 6650000
+        },
+        {
+          "itemId": "P08-I2",
+          "requirementType": "Pasarela de pagos",
+          "drivers": {
+            "pasarelas": [
+              "Wompi",
+              "PayU"
+            ]
+          },
+          "catalogHours": 16,
+          "approvedHours": 22,
+          "lineTotalCop": 2090000
+        },
+        {
+          "itemId": "P08-I3",
+          "requirementType": "Sitio multilenguaje",
+          "drivers": {
+            "idiomas": 3
+          },
+          "catalogHours": 12,
+          "approvedHours": 17,
+          "lineTotalCop": 1615000
+        }
+      ],
+      "totalHours": 109,
+      "totalCop": 10355000,
+      "split": "train"
+    },
+    {
+      "projectId": "P09",
+      "sector": "agencia de viajes",
+      "city": "Tuquerres",
+      "channel": "WEB_FORM",
+      "items": [
+        {
+          "itemId": "P09-I1",
+          "requirementType": "Sitio web informativo",
+          "drivers": {
+            "paginas": 9,
+            "diseno_a_medida": false
+          },
+          "catalogHours": 30,
+          "approvedHours": 54,
+          "lineTotalCop": 5130000
+        },
+        {
+          "itemId": "P09-I2",
+          "requirementType": "Blog y gestor de contenidos",
+          "drivers": {
+            "roles_de_editor": 2
+          },
+          "catalogHours": 12,
+          "approvedHours": 15,
+          "lineTotalCop": 1425000
+        },
+        {
+          "itemId": "P09-I3",
+          "requirementType": "Identidad de marca",
+          "drivers": {
+            "alcance": "solo logo"
+          },
+          "catalogHours": 40,
+          "approvedHours": 27,
+          "lineTotalCop": 2565000
+        },
+        {
+          "itemId": "P09-I4",
+          "requirementType": "Sitio multilenguaje",
+          "drivers": {
+            "idiomas": 2
+          },
+          "catalogHours": 12,
+          "approvedHours": 8,
+          "lineTotalCop": 760000
+        }
+      ],
+      "totalHours": 104,
+      "totalCop": 9880000,
+      "split": "train"
+    },
+    {
+      "projectId": "P10",
+      "sector": "cafeteria de especialidad",
+      "city": "Tumaco",
+      "channel": "WHATSAPP",
+      "items": [
+        {
+          "itemId": "P10-I1",
+          "requirementType": "Sitio web informativo",
+          "drivers": {
+            "paginas": 11,
+            "diseno_a_medida": true
+          },
+          "catalogHours": 30,
+          "approvedHours": 82,
+          "lineTotalCop": 7790000
+        },
+        {
+          "itemId": "P10-I2",
+          "requirementType": "Blog y gestor de contenidos",
+          "drivers": {
+            "roles_de_editor": 3
+          },
+          "catalogHours": 12,
+          "approvedHours": 18,
+          "lineTotalCop": 1710000
+        },
+        {
+          "itemId": "P10-I3",
+          "requirementType": "Identidad de marca",
+          "drivers": {
+            "alcance": "manual completo con papeleria"
+          },
+          "catalogHours": 40,
+          "approvedHours": 70,
+          "lineTotalCop": 6650000
+        },
+        {
+          "itemId": "P10-I4",
+          "requirementType": "Panel administrativo",
+          "drivers": {
+            "modulos": 4
+          },
+          "catalogHours": 40,
+          "approvedHours": 48,
+          "lineTotalCop": 4560000
+        }
+      ],
+      "totalHours": 218,
+      "totalCop": 20710000,
+      "split": "train"
+    },
+    {
+      "projectId": "P11",
+      "sector": "academia de ingles",
+      "city": "Ipiales",
+      "channel": "WHATSAPP",
+      "items": [
+        {
+          "itemId": "P11-I1",
+          "requirementType": "Sitio web informativo",
+          "drivers": {
+            "paginas": 6,
+            "diseno_a_medida": false
+          },
+          "catalogHours": 30,
+          "approvedHours": 40,
+          "lineTotalCop": 3800000
+        },
+        {
+          "itemId": "P11-I2",
+          "requirementType": "Sistema de reservas",
+          "drivers": {
+            "sedes": 2,
+            "sincroniza_google_calendar": false
+          },
+          "catalogHours": 32,
+          "approvedHours": 33,
+          "lineTotalCop": 3135000
+        },
+        {
+          "itemId": "P11-I3",
+          "requirementType": "SEO inicial",
+          "drivers": {
+            "paginas_a_optimizar": 12
+          },
+          "catalogHours": 8,
+          "approvedHours": 16,
+          "lineTotalCop": 1520000
+        }
+      ],
+      "totalHours": 89,
+      "totalCop": 8455000,
+      "split": "train"
+    },
+    {
+      "projectId": "P12",
+      "sector": "taller de motos",
+      "city": "Popayan",
+      "channel": "EMAIL",
+      "items": [
+        {
+          "itemId": "P12-I1",
+          "requirementType": "Sitio web informativo",
+          "drivers": {
+            "paginas": 9,
+            "diseno_a_medida": true
+          },
+          "catalogHours": 30,
+          "approvedHours": 63,
+          "lineTotalCop": 5985000
+        },
+        {
+          "itemId": "P12-I2",
+          "requirementType": "Blog y gestor de contenidos",
+          "drivers": {
+            "roles_de_editor": 3
+          },
+          "catalogHours": 12,
+          "approvedHours": 18,
+          "lineTotalCop": 1710000
+        }
+      ],
+      "totalHours": 81,
+      "totalCop": 7695000,
+      "split": "holdout"
+    },
+    {
+      "projectId": "P13",
+      "sector": "cafeteria de especialidad",
+      "city": "Tuquerres",
+      "channel": "WEB_FORM",
+      "items": [
+        {
+          "itemId": "P13-I1",
+          "requirementType": "Sitio web informativo",
+          "drivers": {
+            "paginas": 7,
+            "diseno_a_medida": true
+          },
+          "catalogHours": 30,
+          "approvedHours": 53,
+          "lineTotalCop": 5035000
+        },
+        {
+          "itemId": "P13-I2",
+          "requirementType": "Blog y gestor de contenidos",
+          "drivers": {
+            "roles_de_editor": 2
+          },
+          "catalogHours": 12,
+          "approvedHours": 16,
+          "lineTotalCop": 1520000
+        }
+      ],
+      "totalHours": 69,
+      "totalCop": 6555000,
+      "split": "train"
+    },
+    {
+      "projectId": "P14",
+      "sector": "estudio de abogados",
+      "city": "Cali",
+      "channel": "EMAIL",
+      "items": [
+        {
+          "itemId": "P14-I1",
+          "requirementType": "Sitio web informativo",
+          "drivers": {
+            "paginas": 10,
+            "diseno_a_medida": true
+          },
+          "catalogHours": 30,
+          "approvedHours": 72,
+          "lineTotalCop": 6840000
+        },
+        {
+          "itemId": "P14-I2",
+          "requirementType": "Integracion WhatsApp",
+          "drivers": {
+            "tipo": "boton de chat"
+          },
+          "catalogHours": 10,
+          "approvedHours": 6,
+          "lineTotalCop": 570000
+        },
+        {
+          "itemId": "P14-I3",
+          "requirementType": "Panel administrativo",
+          "drivers": {
+            "modulos": 4
+          },
+          "catalogHours": 40,
+          "approvedHours": 46,
+          "lineTotalCop": 4370000
+        }
+      ],
+      "totalHours": 124,
+      "totalCop": 11780000,
+      "split": "holdout"
+    },
+    {
+      "projectId": "P15",
+      "sector": "cafeteria de especialidad",
+      "city": "Ipiales",
+      "channel": "EMAIL",
+      "items": [
+        {
+          "itemId": "P15-I1",
+          "requirementType": "Sitio web informativo",
+          "drivers": {
+            "paginas": 9,
+            "diseno_a_medida": true
+          },
+          "catalogHours": 30,
+          "approvedHours": 77,
+          "lineTotalCop": 7315000
+        },
+        {
+          "itemId": "P15-I2",
+          "requirementType": "Integracion WhatsApp",
+          "drivers": {
+            "tipo": "bot con notificaciones automaticas"
+          },
+          "catalogHours": 10,
+          "approvedHours": 25,
+          "lineTotalCop": 2375000
+        },
+        {
+          "itemId": "P15-I3",
+          "requirementType": "Blog y gestor de contenidos",
+          "drivers": {
+            "roles_de_editor": 3
+          },
+          "catalogHours": 12,
+          "approvedHours": 16,
+          "lineTotalCop": 1520000
+        }
+      ],
+      "totalHours": 118,
+      "totalCop": 11210000,
+      "split": "train"
+    },
+    {
+      "projectId": "P16",
+      "sector": "estudio de abogados",
+      "city": "Pasto",
+      "channel": "WHATSAPP",
+      "items": [
+        {
+          "itemId": "P16-I1",
+          "requirementType": "Tienda en linea",
+          "drivers": {
+            "productos": 40,
+            "migracion_desde_excel": false
+          },
+          "catalogHours": 60,
+          "approvedHours": 40,
+          "lineTotalCop": 3800000
+        },
+        {
+          "itemId": "P16-I2",
+          "requirementType": "Pasarela de pagos",
+          "drivers": {
+            "pasarelas": [
+              "Wompi",
+              "PayU",
+              "Nequi"
+            ]
+          },
+          "catalogHours": 16,
+          "approvedHours": 36,
+          "lineTotalCop": 3420000
+        },
+        {
+          "itemId": "P16-I3",
+          "requirementType": "Panel administrativo",
+          "drivers": {
+            "modulos": 8
+          },
+          "catalogHours": 40,
+          "approvedHours": 74,
+          "lineTotalCop": 7030000
+        }
+      ],
+      "totalHours": 150,
+      "totalCop": 14250000,
+      "split": "train"
+    },
+    {
+      "projectId": "P17",
+      "sector": "restaurante",
+      "city": "Cali",
+      "channel": "WHATSAPP",
+      "items": [
+        {
+          "itemId": "P17-I1",
+          "requirementType": "Sitio web informativo",
+          "drivers": {
+            "paginas": 8,
+            "diseno_a_medida": false
+          },
+          "catalogHours": 30,
+          "approvedHours": 54,
+          "lineTotalCop": 5130000
+        },
+        {
+          "itemId": "P17-I2",
+          "requirementType": "Blog y gestor de contenidos",
+          "drivers": {
+            "roles_de_editor": 1
+          },
+          "catalogHours": 12,
+          "approvedHours": 13,
+          "lineTotalCop": 1235000
+        },
+        {
+          "itemId": "P17-I3",
+          "requirementType": "Sistema de reservas",
+          "drivers": {
+            "sedes": 1,
+            "sincroniza_google_calendar": true
+          },
+          "catalogHours": 32,
+          "approvedHours": 39,
+          "lineTotalCop": 3705000
+        },
+        {
+          "itemId": "P17-I4",
+          "requirementType": "Identidad de marca",
+          "drivers": {
+            "alcance": "logo y manual de marca"
+          },
+          "catalogHours": 40,
+          "approvedHours": 48,
+          "lineTotalCop": 4560000
+        }
+      ],
+      "totalHours": 154,
+      "totalCop": 14630000,
+      "split": "train"
+    },
+    {
+      "projectId": "P18",
+      "sector": "libreria",
+      "city": "Cali",
+      "channel": "WEB_FORM",
+      "items": [
+        {
+          "itemId": "P18-I1",
+          "requirementType": "Identidad de marca",
+          "drivers": {
+            "alcance": "manual completo con papeleria"
+          },
+          "catalogHours": 40,
+          "approvedHours": 73,
+          "lineTotalCop": 6935000
+        },
+        {
+          "itemId": "P18-I2",
+          "requirementType": "Sitio web informativo",
+          "drivers": {
+            "paginas": 12,
+            "diseno_a_medida": true
+          },
+          "catalogHours": 30,
+          "approvedHours": 98,
+          "lineTotalCop": 9310000
+        },
+        {
+          "itemId": "P18-I3",
+          "requirementType": "SEO inicial",
+          "drivers": {
+            "paginas_a_optimizar": 5
+          },
+          "catalogHours": 8,
+          "approvedHours": 12,
+          "lineTotalCop": 1140000
+        }
+      ],
+      "totalHours": 183,
+      "totalCop": 17385000,
+      "split": "train"
+    },
+    {
+      "projectId": "P19",
+      "sector": "constructora",
+      "city": "Tuquerres",
+      "channel": "WHATSAPP",
+      "items": [
+        {
+          "itemId": "P19-I1",
+          "requirementType": "Sitio web informativo",
+          "drivers": {
+            "paginas": 6,
+            "diseno_a_medida": false
+          },
+          "catalogHours": 30,
+          "approvedHours": 34,
+          "lineTotalCop": 3230000
+        },
+        {
+          "itemId": "P19-I2",
+          "requirementType": "Blog y gestor de contenidos",
+          "drivers": {
+            "roles_de_editor": 3
+          },
+          "catalogHours": 12,
+          "approvedHours": 19,
+          "lineTotalCop": 1805000
+        },
+        {
+          "itemId": "P19-I3",
+          "requirementType": "Sitio multilenguaje",
+          "drivers": {
+            "idiomas": 2
+          },
+          "catalogHours": 12,
+          "approvedHours": 8,
+          "lineTotalCop": 760000
+        }
+      ],
+      "totalHours": 61,
+      "totalCop": 5795000,
+      "split": "train"
+    },
+    {
+      "projectId": "P20",
+      "sector": "panaderia",
+      "city": "Ipiales",
+      "channel": "WEB_FORM",
+      "items": [
+        {
+          "itemId": "P20-I1",
+          "requirementType": "Sitio web informativo",
+          "drivers": {
+            "paginas": 11,
+            "diseno_a_medida": true
+          },
+          "catalogHours": 30,
+          "approvedHours": 76,
+          "lineTotalCop": 7220000
+        },
+        {
+          "itemId": "P20-I2",
+          "requirementType": "Integracion WhatsApp",
+          "drivers": {
+            "tipo": "boton de chat"
+          },
+          "catalogHours": 10,
+          "approvedHours": 6,
+          "lineTotalCop": 570000
+        },
+        {
+          "itemId": "P20-I3",
+          "requirementType": "Sitio multilenguaje",
+          "drivers": {
+            "idiomas": 3
+          },
+          "catalogHours": 12,
+          "approvedHours": 17,
+          "lineTotalCop": 1615000
+        }
+      ],
+      "totalHours": 99,
+      "totalCop": 9405000,
+      "split": "train"
+    },
+    {
+      "projectId": "P21",
+      "sector": "estudio de abogados",
+      "city": "Cali",
+      "channel": "WHATSAPP",
+      "items": [
+        {
+          "itemId": "P21-I1",
+          "requirementType": "Sitio web informativo",
+          "drivers": {
+            "paginas": 8,
+            "diseno_a_medida": true
+          },
+          "catalogHours": 30,
+          "approvedHours": 64,
+          "lineTotalCop": 6080000
+        },
+        {
+          "itemId": "P21-I2",
+          "requirementType": "Integracion WhatsApp",
+          "drivers": {
+            "tipo": "boton de chat"
+          },
+          "catalogHours": 10,
+          "approvedHours": 6,
+          "lineTotalCop": 570000
+        },
+        {
+          "itemId": "P21-I3",
+          "requirementType": "Tienda en linea",
+          "drivers": {
+            "productos": 600,
+            "migracion_desde_excel": true
+          },
+          "catalogHours": 60,
+          "approvedHours": 89,
+          "lineTotalCop": 8455000
+        },
+        {
+          "itemId": "P21-I4",
+          "requirementType": "Blog y gestor de contenidos",
+          "drivers": {
+            "roles_de_editor": 2
+          },
+          "catalogHours": 12,
+          "approvedHours": 15,
+          "lineTotalCop": 1425000
+        }
+      ],
+      "totalHours": 174,
+      "totalCop": 16530000,
+      "split": "train"
+    },
+    {
+      "projectId": "P22",
+      "sector": "veterinaria",
+      "city": "Tumaco",
+      "channel": "WEB_FORM",
+      "items": [
+        {
+          "itemId": "P22-I1",
+          "requirementType": "Identidad de marca",
+          "drivers": {
+            "alcance": "manual completo con papeleria"
+          },
+          "catalogHours": 40,
+          "approvedHours": 71,
+          "lineTotalCop": 6745000
+        },
+        {
+          "itemId": "P22-I2",
+          "requirementType": "Sitio web informativo",
+          "drivers": {
+            "paginas": 8,
+            "diseno_a_medida": false
+          },
+          "catalogHours": 30,
+          "approvedHours": 54,
+          "lineTotalCop": 5130000
+        }
+      ],
+      "totalHours": 125,
+      "totalCop": 11875000,
+      "split": "train"
+    },
+    {
+      "projectId": "P23",
+      "sector": "restaurante",
+      "city": "Tumaco",
+      "channel": "WEB_FORM",
+      "items": [
+        {
+          "itemId": "P23-I1",
+          "requirementType": "Tienda en linea",
+          "drivers": {
+            "productos": 20,
+            "migracion_desde_excel": false
+          },
+          "catalogHours": 60,
+          "approvedHours": 37,
+          "lineTotalCop": 3515000
+        },
+        {
+          "itemId": "P23-I2",
+          "requirementType": "Pasarela de pagos",
+          "drivers": {
+            "pasarelas": [
+              "Wompi",
+              "Nequi"
+            ]
+          },
+          "catalogHours": 16,
+          "approvedHours": 24,
+          "lineTotalCop": 2280000
+        }
+      ],
+      "totalHours": 61,
+      "totalCop": 5795000,
+      "split": "train"
+    },
+    {
+      "projectId": "P24",
+      "sector": "spa",
+      "city": "Tuquerres",
+      "channel": "WEB_FORM",
+      "items": [
+        {
+          "itemId": "P24-I1",
+          "requirementType": "Tienda en linea",
+          "drivers": {
+            "productos": 40,
+            "migracion_desde_excel": false
+          },
+          "catalogHours": 60,
+          "approvedHours": 41,
+          "lineTotalCop": 3895000
+        },
+        {
+          "itemId": "P24-I2",
+          "requirementType": "Panel administrativo",
+          "drivers": {
+            "modulos": 4
+          },
+          "catalogHours": 40,
+          "approvedHours": 44,
+          "lineTotalCop": 4180000
+        }
+      ],
+      "totalHours": 85,
+      "totalCop": 8075000,
+      "split": "holdout"
+    },
+    {
+      "projectId": "P25",
+      "sector": "ferreteria",
+      "city": "Ipiales",
+      "channel": "WEB_FORM",
+      "items": [
+        {
+          "itemId": "P25-I1",
+          "requirementType": "Tienda en linea",
+          "drivers": {
+            "productos": 40,
+            "migracion_desde_excel": false
+          },
+          "catalogHours": 60,
+          "approvedHours": 31,
+          "lineTotalCop": 2945000
+        },
+        {
+          "itemId": "P25-I2",
+          "requirementType": "Pasarela de pagos",
+          "drivers": {
+            "pasarelas": [
+              "PayU"
+            ]
+          },
+          "catalogHours": 16,
+          "approvedHours": 12,
+          "lineTotalCop": 1140000
+        },
+        {
+          "itemId": "P25-I3",
+          "requirementType": "Identidad de marca",
+          "drivers": {
+            "alcance": "solo logo"
+          },
+          "catalogHours": 40,
+          "approvedHours": 21,
+          "lineTotalCop": 1995000
+        }
+      ],
+      "totalHours": 64,
+      "totalCop": 6080000,
+      "split": "train"
+    },
+    {
+      "projectId": "P26",
+      "sector": "floristeria",
+      "city": "Tumaco",
+      "channel": "EMAIL",
+      "items": [
+        {
+          "itemId": "P26-I1",
+          "requirementType": "Identidad de marca",
+          "drivers": {
+            "alcance": "solo logo"
+          },
+          "catalogHours": 40,
+          "approvedHours": 26,
+          "lineTotalCop": 2470000
+        },
+        {
+          "itemId": "P26-I2",
+          "requirementType": "Sitio web informativo",
+          "drivers": {
+            "paginas": 6,
+            "diseno_a_medida": false
+          },
+          "catalogHours": 30,
+          "approvedHours": 37,
+          "lineTotalCop": 3515000
+        },
+        {
+          "itemId": "P26-I3",
+          "requirementType": "Pasarela de pagos",
+          "drivers": {
+            "pasarelas": [
+              "Wompi",
+              "PSE",
+              "PayU"
+            ]
+          },
+          "catalogHours": 16,
+          "approvedHours": 37,
+          "lineTotalCop": 3515000
+        },
+        {
+          "itemId": "P26-I4",
+          "requirementType": "Panel administrativo",
+          "drivers": {
+            "modulos": 3
+          },
+          "catalogHours": 40,
+          "approvedHours": 37,
+          "lineTotalCop": 3515000
+        }
+      ],
+      "totalHours": 137,
+      "totalCop": 13015000,
+      "split": "train"
+    },
+    {
+      "projectId": "P27",
+      "sector": "restaurante",
+      "city": "Pasto",
+      "channel": "WEB_FORM",
+      "items": [
+        {
+          "itemId": "P27-I1",
+          "requirementType": "Tienda en linea",
+          "drivers": {
+            "productos": 150,
+            "migracion_desde_excel": true
+          },
+          "catalogHours": 60,
+          "approvedHours": 64,
+          "lineTotalCop": 6080000
+        },
+        {
+          "itemId": "P27-I2",
+          "requirementType": "Pasarela de pagos",
+          "drivers": {
+            "pasarelas": [
+              "Wompi",
+              "PSE"
+            ]
+          },
+          "catalogHours": 16,
+          "approvedHours": 28,
+          "lineTotalCop": 2660000
+        }
+      ],
+      "totalHours": 92,
+      "totalCop": 8740000,
+      "split": "train"
+    },
+    {
+      "projectId": "P28",
+      "sector": "spa",
+      "city": "Tumaco",
+      "channel": "WEB_FORM",
+      "items": [
+        {
+          "itemId": "P28-I1",
+          "requirementType": "Sitio web informativo",
+          "drivers": {
+            "paginas": 12,
+            "diseno_a_medida": false
+          },
+          "catalogHours": 30,
+          "approvedHours": 66,
+          "lineTotalCop": 6270000
+        },
+        {
+          "itemId": "P28-I2",
+          "requirementType": "Integracion WhatsApp",
+          "drivers": {
+            "tipo": "boton de chat"
+          },
+          "catalogHours": 10,
+          "approvedHours": 6,
+          "lineTotalCop": 570000
+        },
+        {
+          "itemId": "P28-I3",
+          "requirementType": "Identidad de marca",
+          "drivers": {
+            "alcance": "manual completo con papeleria"
+          },
+          "catalogHours": 40,
+          "approvedHours": 77,
+          "lineTotalCop": 7315000
+        },
+        {
+          "itemId": "P28-I4",
+          "requirementType": "Sistema de reservas",
+          "drivers": {
+            "sedes": 3,
+            "sincroniza_google_calendar": true
+          },
+          "catalogHours": 32,
+          "approvedHours": 44,
+          "lineTotalCop": 4180000
+        }
+      ],
+      "totalHours": 193,
+      "totalCop": 18335000,
+      "split": "train"
+    },
+    {
+      "projectId": "P29",
+      "sector": "inmobiliaria",
+      "city": "Tuquerres",
+      "channel": "WEB_FORM",
+      "items": [
+        {
+          "itemId": "P29-I1",
+          "requirementType": "Identidad de marca",
+          "drivers": {
+            "alcance": "manual completo con papeleria"
+          },
+          "catalogHours": 40,
+          "approvedHours": 71,
+          "lineTotalCop": 6745000
+        },
+        {
+          "itemId": "P29-I2",
+          "requirementType": "Sitio web informativo",
+          "drivers": {
+            "paginas": 12,
+            "diseno_a_medida": true
+          },
+          "catalogHours": 30,
+          "approvedHours": 81,
+          "lineTotalCop": 7695000
+        }
+      ],
+      "totalHours": 152,
+      "totalCop": 14440000,
+      "split": "holdout"
+    },
+    {
+      "projectId": "P30",
+      "sector": "inmobiliaria",
+      "city": "Tuquerres",
+      "channel": "EMAIL",
+      "items": [
+        {
+          "itemId": "P30-I1",
+          "requirementType": "Identidad de marca",
+          "drivers": {
+            "alcance": "solo logo"
+          },
+          "catalogHours": 40,
+          "approvedHours": 22,
+          "lineTotalCop": 2090000
+        },
+        {
+          "itemId": "P30-I2",
+          "requirementType": "Sitio web informativo",
+          "drivers": {
+            "paginas": 10,
+            "diseno_a_medida": true
+          },
+          "catalogHours": 30,
+          "approvedHours": 69,
+          "lineTotalCop": 6555000
+        }
+      ],
+      "totalHours": 91,
+      "totalCop": 8645000,
+      "split": "holdout"
+    }
+  ]
+}
