@@ -39,6 +39,7 @@ llm:
   provider: ${LLM_PROVIDER:ollama}
   ollama:
     base-url: ${OLLAMA_BASE_URL:http://localhost:11434}
+    api-key: ${OLLAMA_API_KEY:}
     model: ${OLLAMA_MODEL:llama3.1}
   groq:
     base-url: ${GROQ_BASE_URL:https://api.groq.com/openai/v1}

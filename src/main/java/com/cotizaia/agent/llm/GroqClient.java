@@ -40,7 +40,7 @@ public class GroqClient extends AbstractHttpLlmClient {
         try {
             JsonNode root = client.post().uri("/chat/completions")
                     .header("Authorization", "Bearer " + apiKey).body(body).retrieve().body(JsonNode.class);
-            return response(root, "/choices/0/message/content", start);
+            return response(root, "/choices/0/message/content", start, request.jsonOutput());
         } catch (RestClientResponseException exception) {
             throw mapFailure(exception);
         } catch (ResourceAccessException exception) {
