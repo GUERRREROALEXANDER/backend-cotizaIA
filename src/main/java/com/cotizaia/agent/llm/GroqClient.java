@@ -13,9 +13,12 @@ public class GroqClient extends AbstractHttpLlmClient {
 
     private final String apiKey;
 
+    private final String reasoningEffort;
+
     public GroqClient(RestClient.Builder builder, LlmProperties properties) {
         super(builder, properties.getGroq().getBaseUrl(), properties.getGroq().getModel(), properties.getTimeout());
         this.apiKey = properties.getGroq().getApiKey();
+        this.reasoningEffort = properties.getGroq().getReasoningEffort();
     }
 
     @Override
@@ -27,6 +30,9 @@ public class GroqClient extends AbstractHttpLlmClient {
         body.put("model", model);
         body.put("temperature", 0);
         body.put("messages", messages(request));
+        if (reasoningEffort != null && !reasoningEffort.isBlank()) {
+            body.put("reasoning_effort", reasoningEffort);
+        }
         if (request.jsonOutput()) {
             body.put("response_format", Map.of("type", "json_object"));
         }

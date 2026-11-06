@@ -78,6 +78,8 @@ public class LlmProperties {
         private String baseUrl = "https://api.groq.com/openai/v1";
         private String apiKey = "";
         private String model = "openai/gpt-oss-20b";
+        /** gpt-oss reasoning effort (low|medium|high); blank = provider default. Hidden reasoning tokens count. */
+        private String reasoningEffort = "";
 
         public String getBaseUrl() {
             return baseUrl;
@@ -102,7 +104,15 @@ public class LlmProperties {
         public void setModel(String model) {
             this.model = model;
         }
-    }
+    
+        public String getReasoningEffort() {
+            return reasoningEffort;
+        }
+
+        public void setReasoningEffort(String reasoningEffort) {
+            this.reasoningEffort = reasoningEffort == null ? "" : reasoningEffort.trim();
+        }
+}
 
     public static class Timeout {
         private Duration connect = Duration.ofSeconds(5);
