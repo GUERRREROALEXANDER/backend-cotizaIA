@@ -19,6 +19,7 @@ that mentions money, hours or numbers the client never gave.
 | Tests | 540+ (JUnit 5, Spring Boot Test, Testcontainers PostgreSQL 16 + pgvector, MockRestServiceServer) |
 | Estimation error, offline eval (stub models) | **10.0 h MAE vs 21.0 h** for the fixed catalog: **52% lower** ([eval/report-stub.md](eval/report-stub.md)) |
 | Estimation error, real models (Groq gpt-oss-120b + Voyage voyage-4-lite) | **9.5 h MAE vs 21.0 h**: **55% lower**, 13/13 items estimated from memory with citations ([eval/report-groq.md](eval/report-groq.md)) |
+| Estimation error, Gemma 4 31B on Ollama Cloud + Voyage | **9.5 h MAE vs 21.0 h**: **55% lower**, same 13/13 from memory ([eval/report-gemma.md](eval/report-gemma.md)); the model only extracts, so equal extraction gives equal estimates |
 | Plaintext client data in a raw database dump | none (test scans every column of every table) |
 | Credentials readable from browser JavaScript | none (HttpOnly cookies; verified by a Playwright test in the frontend repo) |
 
@@ -33,7 +34,7 @@ agent MAE ≤ 0.70 × catalog MAE.
 | Language / framework | Java 17, Spring Boot 3.5 (Maven) |
 | Database | PostgreSQL 16 + **pgvector** on Supabase; H2 in unit tests, real PostgreSQL in Testcontainers |
 | Migrations | Flyway `V1`…`V27`, vendor-specific folder for pgvector; Hibernate only validates |
-| AI | `LlmClient` (Groq / Ollama / offline stub) + `EmbeddingClient` (Voyage / Ollama / stub), one provider family per deploy |
+| AI | `LlmClient` (Ollama Cloud Gemma 4 / Groq / local Ollama / offline stub) + `EmbeddingClient` (Voyage / Ollama / stub), one provider family per deploy |
 | Security | Spring Security, JWT in HttpOnly cookies, CSRF double submit, rotating refresh tokens, AES-256-GCM field encryption, rate limits |
 | PDF | OpenPDF (generate), PDFBox (read) |
 | API docs | springdoc-openapi (off in production unless `SWAGGER_ENABLED=true`) |
