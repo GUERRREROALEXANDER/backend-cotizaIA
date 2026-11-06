@@ -75,6 +75,29 @@ class ProposalDraftValidatorTests {
         assertThat(validator.violations(accented, BRIEF, REQUIREMENTS, Set.of())).isEmpty();
     }
 
+    /**
+     * Found in production with Gemma 4: "No se incluyen costos de transacción" is a legitimate exclusion (it says
+     * what is NOT charged), yet the money rule rejected it twice and the draft fell back to the template. Exclusions
+     * may name cost concepts; amounts and currencies stay forbidden everywhere, and scope/assumptions stay strict.
+     */
+    @Test
+    void exclusionsMayNameCostConceptsButNeverAmounts() throws Exception {
+        assertThat(validator.violations(withExclusion("No se incluyen costos de transacción bancaria ni tarifas de hosting."),
+                BRIEF, REQUIREMENTS, Set.of())).isEmpty();
+        for (String exclusion : List.of("Hosting con costo de 300 mensual.", "Dominio por $ aparte.",
+                "Hosting cobrado en COP.", "Dominio por unos pesos extra.")) {
+            assertThat(validator.violations(withExclusion(exclusion), BRIEF, REQUIREMENTS, Set.of())).as(exclusion)
+                    .isNotEmpty();
+        }
+        assertThat(validator.violations(draft("Tienda sin costo adicional.", "[]"), BRIEF, REQUIREMENTS, Set.of()))
+                .as("scope stays strict").isNotEmpty();
+    }
+
+    private JsonNode withExclusion(String exclusion) throws Exception {
+        return mapper.readTree(draft("Tienda con carrito.", "[]").toString()
+                .replace("Publicidad pagada.", exclusion));
+    }
+
     private JsonNode draft(String shopText, String shopCitations) throws Exception {
         return mapper.readTree("""
                 {"scope":[{"requirement":"Tienda en linea","text":"%s","citations":%s},
