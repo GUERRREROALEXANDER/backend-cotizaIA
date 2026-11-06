@@ -6,8 +6,9 @@ import java.util.Map;
 import org.springframework.stereotype.Component;
 
 /**
- * Factory Method creator (project.txt section 6): registers one ConcreteClass per document type,
- * keeping generator selection in one place and rejecting ambiguous registrations.
+ * Simple Factory (a registry): maps each {@link DocumentType} to its generator, keeping selection in one place
+ * and rejecting ambiguous registrations. It used to be labelled "Factory Method", which it is not: nothing is
+ * deferred to a subclass. The GoF Factory Method lives in {@code agent.knowledge.KnowledgeIngestor#createChunker()}.
  */
 @Component
 public class DocumentFactory {

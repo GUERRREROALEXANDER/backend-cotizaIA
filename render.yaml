@@ -43,7 +43,29 @@ services:
     buildCommand: npm ci && npm run build
     staticPublishPath: ./dist
     autoDeploy: true
-    envVars:
-      # Backend URL, e.g. https://cotizaia-backend.onrender.com (no trailing slash).
-      - key: VITE_API_URL
-        sync: false
+    # The browser only talks to this origin: /api/* is proxied to the backend, so the session cookies stay
+    # first-party (SameSite=Strict) and no API URL is baked into the bundle. Replace the host if Render gave the
+    # backend a suffixed URL.
+    routes:
+      - type: rewrite
+        source: /api/*
+        destination: https://cotizaia-backend.onrender.com/api/*
+    headers:
+      - path: /*
+        name: Content-Security-Policy
+        value: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+      - path: /*
+        name: Strict-Transport-Security
+        value: max-age=31536000; includeSubDomains
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
+      - path: /*
+        name: Permissions-Policy
+        value: camera=(), microphone=(), geolocation=(), payment=()
