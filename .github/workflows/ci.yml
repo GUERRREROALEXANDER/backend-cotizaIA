@@ -25,6 +25,11 @@ jobs:
       # PgVectorStoreTests skip themselves without Docker; in CI that would hide the only real-PostgreSQL run.
       - name: Require the PostgreSQL + pgvector tests to have run
         run: grep -q 'skipped="0"' target/surefire-reports/TEST-com.cotizaia.agent.knowledge.PgVectorStoreTests.xml
+      # Known-vulnerable runtime dependencies fail the build unless accepted with a reason and review date.
+      - name: Dependency vulnerabilities (OSV.dev)
+        run: |
+          ./mvnw -B -q dependency:list -DincludeScope=runtime -DoutputFile=target/runtime-deps.txt
+          python3 scripts/osv_check.py target/runtime-deps.txt security/osv-allowlist.txt
       - name: Upload test reports on failure
         if: failure()
         uses: actions/upload-artifact@v4

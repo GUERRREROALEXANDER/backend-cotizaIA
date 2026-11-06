@@ -30,14 +30,14 @@ agent MAE ≤ 0.70 × catalog MAE.
 
 | Layer | Choice |
 |---|---|
-| Language / framework | Java 17, Spring Boot 3.3 (Maven) |
+| Language / framework | Java 17, Spring Boot 3.5 (Maven) |
 | Database | PostgreSQL 16 + **pgvector** on Supabase; H2 in unit tests, real PostgreSQL in Testcontainers |
 | Migrations | Flyway `V1`…`V27`, vendor-specific folder for pgvector; Hibernate only validates |
 | AI | `LlmClient` (Groq / Ollama / offline stub) + `EmbeddingClient` (Voyage / Ollama / stub), one provider family per deploy |
 | Security | Spring Security, JWT in HttpOnly cookies, CSRF double submit, rotating refresh tokens, AES-256-GCM field encryption, rate limits |
 | PDF | OpenPDF (generate), PDFBox (read) |
 | API docs | springdoc-openapi (off in production unless `SWAGGER_ENABLED=true`) |
-| CI | GitHub Actions: full suite, pgvector tests must not be skipped, gitleaks |
+| CI | GitHub Actions: full suite, pgvector tests must not be skipped, gitleaks, OSV dependency scan |
 | Deploy | Docker → Render (free), Supabase (free) |
 
 ## How the AI is used
@@ -91,6 +91,7 @@ What the real-model runs taught (each fix is in the history with its evidence):
 | Cross-tenant access | Every query and vector search filtered by the caller's agency; foreign ids answer 404 | controller tests, `VectorStoreContract` |
 | Leaking internals | No stack traces or exception messages in responses; docs and actuator details off in production | `ProductionProfileTests` |
 | Secrets in git | Everything from the environment; gitleaks in CI; app refuses to start without its keys | CI, `CryptoConfigurationTests` |
+| Vulnerable dependencies | Spring Boot 3.5.16 + patched Jackson, Tomcat, Log4j API, commons-lang3, PostgreSQL driver; CI queries OSV.dev for every runtime dependency and fails on any advisory not accepted in `security/osv-allowlist.txt` (reason + review date) | CI step, `scripts/osv_check.py` |
 
 **Data classification.** Encrypted: agency and user names and emails, client name/email/company, brief text and
 payload, uploaded files, questions and answers, extracted requirements, agent step summaries, proposal texts,
