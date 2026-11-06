@@ -18,7 +18,7 @@ that mentions money, hours or numbers the client never gave.
 |---|---|
 | Tests | 540+ (JUnit 5, Spring Boot Test, Testcontainers PostgreSQL 16 + pgvector, MockRestServiceServer) |
 | Estimation error, offline eval (stub models) | **10.0 h MAE vs 21.0 h** for the fixed catalog: **52% lower** ([eval/report-stub.md](eval/report-stub.md)) |
-| Estimation error, real models (Groq gpt-oss-20b + Voyage voyage-4-lite) | see [eval/report-groq.md](eval/report-groq.md) |
+| Estimation error, real models (Groq gpt-oss-120b + Voyage voyage-4-lite) | **9.5 h MAE vs 21.0 h**: **55% lower**, 13/13 items estimated from memory with citations ([eval/report-groq.md](eval/report-groq.md)) |
 | Plaintext client data in a raw database dump | none (test scans every column of every table) |
 | Credentials readable from browser JavaScript | none (HttpOnly cookies; verified by a Playwright test in the frontend repo) |
 
@@ -70,9 +70,14 @@ brief ─▶ Classify ─▶ Extract ─▶ Retrieve ─▶ Estimate ─▶ Pric
   limits are retried honoring `Retry-After`; a failed run is logged with its execution id, step and cause, never
   with client text.
 
-Lesson recorded in the code: the first real eval tied the catalog because a schema-only prompt made the model
-list every catalog entry with `"hours":0`; the grounding check rejected all 240 invented items instead of storing
-them. The prompt now states the task (`PromptBuilder.extractItems`).
+What the real-model runs taught (each fix is in the history with its evidence):
+1. The first run tied the catalog: a schema-only prompt made the model list every catalog entry with `"hours":0`;
+   the grounding check rejected all 240 invented items instead of storing them. The prompt now states the task.
+2. Free-tier limits (Groq 8K tokens/min, Voyage 3 requests/min) turned into 503s: retries now honor `Retry-After`,
+   and a failed run logs its step and cause.
+3. Groq's JSON mode sometimes answers 400 `json_validate_failed`: retried as the sampling accident it is.
+4. gpt-oss hidden reasoning burned the 200K tokens/day budget: reasoning effort is now configurable (`low`), which
+   keeps extraction exact at ~1K tokens per call.
 
 ## Security
 
