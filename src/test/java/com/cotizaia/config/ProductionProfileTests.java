@@ -30,6 +30,8 @@ class ProductionProfileTests {
         assertThat(prod.get("server.error.include-stacktrace")).hasToString("never");
         assertThat(prod.get("server.error.include-message")).hasToString("never");
         assertThat(prod.get("server.forward-headers-strategy")).hasToString("framework");
+        // No default: production must refuse to start without a real signing key (dev generates a random one).
+        assertThat(prod.get("security.jwt.secret")).hasToString("${JWT_SECRET}");
     }
 
     @Test

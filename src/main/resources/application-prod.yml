@@ -59,3 +59,9 @@ management:
 logging:
   level:
     root: INFO
+
+security:
+  jwt:
+    # No default here: without JWT_SECRET production fails at startup instead of signing with a random
+    # per-restart key (which would silently log everyone out on every Render restart).
+    secret: ${JWT_SECRET}
