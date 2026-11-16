@@ -73,6 +73,27 @@ knowledge:
   # or the pgvector index (see db/migration and db/vendor/{vendor}).
   vector-store: ${KNOWLEDGE_VECTOR_STORE:jdbc}
 
+# Spec 11: Gmail intake. Off unless GMAIL_ENABLED=true; secrets only from the environment.
+gmail:
+  enabled: ${GMAIL_ENABLED:false}
+  mailbox: ${GMAIL_MAILBOX:}
+  label: ${GMAIL_LABEL:cotizar}
+  agency-id: ${GMAIL_AGENCY_ID:}
+  poll-interval: ${GMAIL_POLL_INTERVAL:PT1M}
+  scheduler-enabled: ${GMAIL_SCHEDULER_ENABLED:true}
+  create-unknown-senders: ${GMAIL_CREATE_UNKNOWN_SENDERS:true}
+  auto-process: ${GMAIL_AUTO_PROCESS:true}
+  max-messages-per-run: ${GMAIL_MAX_MESSAGES_PER_RUN:20}
+  oauth:
+    client-id: ${GMAIL_CLIENT_ID:}
+    client-secret: ${GMAIL_CLIENT_SECRET:}
+    refresh-token: ${GMAIL_REFRESH_TOKEN:}
+  push:
+    enabled: ${GMAIL_PUSH_ENABLED:false}
+    topic: ${GMAIL_PUSH_TOPIC:}
+    audience: ${GMAIL_PUSH_AUDIENCE:}
+    service-account-email: ${GMAIL_PUSH_SERVICE_ACCOUNT:}
+
 security:
   jwt:
     secret: ${JWT_SECRET:}
