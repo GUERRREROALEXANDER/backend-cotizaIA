@@ -106,3 +106,10 @@ info:
   app:
     name: backend-cotizaia
     description: CotizaIA quotation agent API
+
+# Demo agency (com.cotizaia.demo.DemoSeeder): DEMO_SEED=true loads "Estudio Nariño Digital" once on startup,
+# through the same services as the API. Off by default.
+demo:
+  seed: ${DEMO_SEED:false}
+  email: ${DEMO_EMAIL:demo@estudio-narino.test}
+  password: ${DEMO_PASSWORD:CotizaIA-demo-2026}

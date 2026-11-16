@@ -122,6 +122,22 @@
 
     <build>
         <finalName>backend-cotizaia</finalName>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <!-- Demo agency loaded on startup when DEMO_SEED=true (com.cotizaia.demo.DemoSeeder). -->
+            <resource>
+                <directory>seed</directory>
+                <targetPath>demo-seed</targetPath>
+                <includes>
+                    <include>manifest.json</include>
+                    <include>content/*.json</include>
+                    <include>pdf/train/*-propuesta.pdf</include>
+                    <include>pdf/holdout/*-brief.pdf</include>
+                </includes>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
