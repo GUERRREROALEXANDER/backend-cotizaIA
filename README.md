@@ -121,7 +121,7 @@ Limitation: rate-limit counters live in memory, per instance. With more than one
 | Structural | Decorator | Price extras (urgency, discount, warranty); `RetryLlmClient`; `RetryEmbeddingClient` | `ProposalPricingDecoratorTests`, `RetryLlmClientTests`, `RetryEmbeddingClientTests` |
 | Structural | Facade | `facade.QuotationFacade.processBrief()` | `QuotationFacadeIntegrationTests` |
 | Structural | Proxy | `agent.embedding.CachingEmbeddingClient` (LRU cache in front of the paid embedder) | `CachingEmbeddingClientTests` |
-| Behavioral | Chain of Responsibility | 8 pipeline handlers, Classify → … → Compose | `PipelineHandlerTests`, `AgentPipelineIntegrationTests` |
+| Behavioral | Chain of Responsibility | 8 pipeline handlers, Classify → … → Compose; `FallbackLlmClient` tries Gemma 4 then Groq | `PipelineHandlerTests`, `AgentPipelineIntegrationTests`, `FallbackLlmClientTests` |
 | Behavioral | Command | `service.command.AdjustHoursCommand` + `CommandHistory` (undo hour edits) | `AdjustHoursCommandTests`, `ProposalRevisionAndUndoFlowTests` |
 | Behavioral | Observer | `notification.ProposalSubject` → email, dashboard, analytics and `KnowledgeObserver` (learning loop) | `ProposalSubjectTests`, `KnowledgeObserverTests` |
 | Behavioral | State | `domain.state.*`: 10 proposal states, illegal moves → 422 | `ProposalStateTransitionTests` |
@@ -142,6 +142,7 @@ export DATA_ENCRYPTION_KEY=$(openssl rand -base64 32) BLIND_INDEX_KEY=$(openssl 
 # 3. Offline, deterministic AI (no network)
 LLM_PROVIDER=stub ./mvnw spring-boot:run
 # Real models: LLM_PROVIDER=groq with GROQ_API_KEY and VOYAGE_API_KEY
+# Failover (docs/specs/12-llm-failover.md): LLM_PROVIDER=groq LLM_CHAIN=gemini,groq with GEMINI_API_KEY and GROQ_API_KEY
 
 # 4. Demo agency (optional, needs the backend running)
 python3 scripts/seed_demo.py
