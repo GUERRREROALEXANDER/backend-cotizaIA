@@ -142,7 +142,37 @@ export DATA_ENCRYPTION_KEY=$(openssl rand -base64 32) BLIND_INDEX_KEY=$(openssl 
 # 3. Offline, deterministic AI (no network)
 LLM_PROVIDER=stub ./mvnw spring-boot:run
 # Real models: LLM_PROVIDER=groq with GROQ_API_KEY and VOYAGE_API_KEY
+
+# 4. Demo agency (optional, needs the backend running)
+python3 scripts/seed_demo.py
 ```
+
+Windows (PowerShell):
+
+```powershell
+docker compose up -d
+function New-Key { $b = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); [Convert]::ToBase64String($b) }
+$env:DATA_ENCRYPTION_KEY = New-Key; $env:BLIND_INDEX_KEY = New-Key
+$env:LLM_PROVIDER = "stub"; .\mvnw.cmd spring-boot:run
+python scripts\seed_demo.py   # in a second terminal
+```
+
+### Demo data
+
+`scripts/seed_demo.py` loads the fictional agency of [`seed/`](seed/README.md) through the public API only (no SQL:
+client data is encrypted at rest, so it must go through the application). It registers **Estudio Nariño Digital**
+(Pasto), its roles and rates, the 10-entry service catalog, 30 clients, the 24 past proposal PDFs as estimation
+memory, and 10 new briefs over the four channels (6 RFP PDFs, email, WhatsApp, web form). Each brief runs through
+the agent; the resulting proposals are left in review, sent, negotiating, rejected, and one accepted with its
+contract, schedule and simulated deposit, so every screen of the frontend has data.
+
+| | |
+|---|---|
+| Email | `demo@estudio-narino.test` |
+| Password | `CotizaIA-demo-2026` |
+
+It is idempotent (a second run only fills what is missing; `--force` adds another round of briefs) and takes
+`--base-url` when the backend is not on `http://localhost:8080`. Standard library only, Python 3.9+.
 
 - Tests: `./mvnw test` (Docker needed for the PostgreSQL + pgvector tests; they are skipped without it locally,
   and CI fails if they are skipped).

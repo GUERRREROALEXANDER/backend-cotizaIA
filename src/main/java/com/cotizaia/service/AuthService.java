@@ -11,6 +11,7 @@ import com.cotizaia.repository.AppUserRepository;
 import com.cotizaia.repository.RefreshTokenRepository;
 import java.time.Instant;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -135,6 +136,14 @@ public class AuthService {
                 .ifPresent(stored -> revokeFamily(stored.getFamilyId()));
     }
 
+    /** Display names for the signed-in user; empty when the token names a user that no longer exists. */
+    @Transactional(readOnly = true)
+    public Optional<Profile> profile(Long userId, Long agencyId) {
+        return users.findById(userId)
+                .filter(user -> user.getAgency().getId().equals(agencyId))
+                .map(user -> new Profile(user.getFullName(), user.getAgency().getName()));
+    }
+
     private IssuedRefreshToken issueRefreshToken(AppUser user) {
         return issueRefreshToken(user, UUID.randomUUID().toString());
     }
@@ -184,5 +193,8 @@ public class AuthService {
      * links the old row's {@code replaced_by} to its replacement.
      */
     public record IssuedRefreshToken(Long id, String token, Instant expiresAt) {
+    }
+
+    public record Profile(String fullName, String agencyName) {
     }
 }

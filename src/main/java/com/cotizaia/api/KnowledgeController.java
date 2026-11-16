@@ -51,10 +51,9 @@ public class KnowledgeController {
     @GetMapping("/documents")
     @Operation(summary = "List knowledge documents")
     public List<KnowledgeDocumentListResponse> list(CurrentUser user) {
-        return service.list(user.agencyId()).stream()
-                .map(document -> KnowledgeDocumentListResponse.from(document,
-                        (int) service.itemCount(document.getId()),
-                        (int) service.passageCount(document.getId())))
+        return service.listWithCounts(user.agencyId()).stream()
+                .map(summary -> KnowledgeDocumentListResponse.from(summary.document(), summary.items(),
+                        summary.passages()))
                 .toList();
     }
 

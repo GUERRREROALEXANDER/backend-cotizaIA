@@ -95,7 +95,9 @@ class AuthControllerTests {
                 .andExpect(jsonPath("$.agencyId").value(registered.path("agencyId").asLong()))
                 .andExpect(jsonPath("$.userId").value(registered.path("userId").asLong()))
                 .andExpect(jsonPath("$.role").value("OWNER"))
-                .andExpect(jsonPath("$.email").value(EMAIL));
+                .andExpect(jsonPath("$.email").value(EMAIL))
+                .andExpect(jsonPath("$.fullName").value("Owner"))
+                .andExpect(jsonPath("$.agencyName").value("Auth agency"));
     }
 
     @Test
