@@ -47,6 +47,15 @@ llm:
     # 120b with low reasoning: exact on the seed extraction tasks at ~1K tokens per call (free tier: 8K/min, 200K/day).
     model: ${GROQ_MODEL:openai/gpt-oss-120b}
     reasoning-effort: ${GROQ_REASONING_EFFORT:low}
+  # Google's OpenAI-compatible endpoint (Gemma 4, free tier). Used through llm.chain; the key is per Google Cloud project.
+  gemini:
+    base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta/openai}
+    api-key: ${GEMINI_API_KEY:}
+    model: ${GEMINI_MODEL:gemma-4-31b-it}
+    reasoning-effort: ${GEMINI_REASONING_EFFORT:}
+  # Failover order, e.g. "gemini,groq": the next provider answers when one is out of quota or down. Blank = only
+  # llm.provider. Embeddings still follow llm.provider (use groq with a chain).
+  chain: ${LLM_CHAIN:}
   timeout:
     connect: ${LLM_CONNECT_TIMEOUT:5s}
     read: ${LLM_READ_TIMEOUT:60s}

@@ -10,6 +10,9 @@ public class LlmProperties {
     private String provider = "ollama";
     private Ollama ollama = new Ollama();
     private Groq groq = new Groq();
+    private Gemini gemini = new Gemini();
+    /** Comma list of providers tried in order (gemini,groq); blank = only {@code provider}. */
+    private String chain = "";
     private Timeout timeout = new Timeout();
     private Retry retry = new Retry();
 
@@ -35,6 +38,22 @@ public class LlmProperties {
 
     public void setGroq(Groq groq) {
         this.groq = groq;
+    }
+
+    public Gemini getGemini() {
+        return gemini;
+    }
+
+    public void setGemini(Gemini gemini) {
+        this.gemini = gemini;
+    }
+
+    public String getChain() {
+        return chain;
+    }
+
+    public void setChain(String chain) {
+        this.chain = chain == null ? "" : chain.trim();
     }
 
     public Timeout getTimeout() {
@@ -123,6 +142,15 @@ public class LlmProperties {
             this.reasoningEffort = reasoningEffort == null ? "" : reasoningEffort.trim();
         }
 }
+
+    /** Google's OpenAI-compatible endpoint, serving Gemma 4 on the free tier. Same shape as {@link Groq}. */
+    public static class Gemini extends Groq {
+
+        public Gemini() {
+            setBaseUrl("https://generativelanguage.googleapis.com/v1beta/openai");
+            setModel("gemma-4-31b-it");
+        }
+    }
 
     public static class Timeout {
         private Duration connect = Duration.ofSeconds(5);
