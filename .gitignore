@@ -17,3 +17,6 @@ application-local.yml
 # Local agent tooling
 .claude/
 .codex/
+
+# Python
+__pycache__/
