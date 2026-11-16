@@ -89,8 +89,8 @@ public class AuthController {
 
     @GetMapping("/me")
     @Operation(summary = "Get the authenticated identity")
-    public CurrentUser me(CurrentUser user) {
-        return user;
+    public MeResponse me(CurrentUser user) {
+        return MeResponse.from(user, authService.profile(user.userId(), user.agencyId()).orElse(null));
     }
 
     private ResponseEntity<AuthResponse> issued(AuthService.RegistrationResult result, HttpStatus status) {
