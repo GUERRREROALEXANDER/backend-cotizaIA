@@ -13,9 +13,13 @@ import com.cotizaia.domain.RequirementType;
 import com.cotizaia.ingest.PdfBriefReader;
 import com.cotizaia.repository.AgencyRepository;
 import com.cotizaia.repository.KnowledgeChunkRepository;
+import com.cotizaia.repository.KnowledgeChunkRepository.KindCount;
 import com.cotizaia.repository.KnowledgeDocumentRepository;
 import com.cotizaia.repository.RequirementTypeRepository;
+import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,11 +61,6 @@ public class KnowledgeService {
         return ingestor.ingest(source);
     }
 
-    @Transactional(readOnly = true)
-    public List<KnowledgeDocument> list(Long agencyId) {
-        return documents.findByAgencyIdOrderByIdAsc(agencyId);
-    }
-
     public void delete(Long agencyId, Long documentId) {
         KnowledgeDocument document = documents.findByIdAndAgencyId(documentId, agencyId)
                 .orElseThrow(() -> new NoSuchElementException("Knowledge document not found: " + documentId));
@@ -82,11 +81,25 @@ public class KnowledgeService {
         return retriever.retrieve(agencyId, query, typeFilter, kk);
     }
 
-    public long passageCount(Long documentId) {
-        return chunks.countByDocumentIdAndKind(documentId, ChunkKind.PASSAGE);
+    /** The agency's documents with their item and passage totals, counted in one grouped query. */
+    @Transactional(readOnly = true)
+    public List<DocumentSummary> listWithCounts(Long agencyId) {
+        List<KnowledgeDocument> found = documents.findByAgencyIdOrderByIdAsc(agencyId);
+        if (found.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, Map<ChunkKind, Long>> counts = new HashMap<>();
+        for (KindCount row : chunks.countByDocumentIds(found.stream().map(KnowledgeDocument::getId).toList())) {
+            counts.computeIfAbsent(row.getDocumentId(), id -> new EnumMap<>(ChunkKind.class))
+                    .put(row.getKind(), row.getCount());
+        }
+        return found.stream().map(document -> {
+            Map<ChunkKind, Long> byKind = counts.getOrDefault(document.getId(), Map.of());
+            return new DocumentSummary(document, byKind.getOrDefault(ChunkKind.ITEM, 0L).intValue(),
+                    byKind.getOrDefault(ChunkKind.PASSAGE, 0L).intValue());
+        }).toList();
     }
 
-    public long itemCount(Long documentId) {
-        return chunks.countByDocumentIdAndKind(documentId, ChunkKind.ITEM);
+    public record DocumentSummary(KnowledgeDocument document, int items, int passages) {
     }
 }

@@ -5,6 +5,7 @@ import com.cotizaia.domain.ProposalStatus;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -21,8 +22,12 @@ public interface ProposalRepository extends JpaRepository<Proposal, Long> {
 
     long countByBriefId(Long briefId);
 
+    // schedulePlan is the inverse side of a one-to-one, which Hibernate always loads eagerly: fetching it in the
+    // list query avoids one extra select per proposal.
+    @EntityGraph(attributePaths = "schedulePlan")
     List<Proposal> findByStatusAndBriefClientAgencyIdOrderByCreatedAtAsc(ProposalStatus status, Long agencyId);
 
+    @EntityGraph(attributePaths = "schedulePlan")
     List<Proposal> findByBriefClientAgencyIdOrderByCreatedAtDesc(Long agencyId);
 
     List<Proposal> findByBriefIdOrderByIdDesc(Long briefId);
