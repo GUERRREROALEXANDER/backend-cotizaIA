@@ -11,6 +11,8 @@ COPY mvnw pom.xml ./
 RUN sed -i 's/\r$//' mvnw && chmod +x mvnw && ./mvnw -q -B dependency:go-offline
 
 COPY src ./src
+# The demo agency's files are packaged into the jar (pom.xml resources, demo-seed/).
+COPY seed ./seed
 RUN ./mvnw -q -B clean package -DskipTests
 
 # =========================
