@@ -7,6 +7,7 @@ import com.cotizaia.domain.Role;
 import com.cotizaia.domain.ServiceCatalog;
 import com.cotizaia.facade.QuotationFacade;
 import com.cotizaia.facade.QuotationResult;
+import com.cotizaia.repository.AgencyRepository;
 import com.cotizaia.repository.AppUserRepository;
 import com.cotizaia.service.ApprovalQueueService;
 import com.cotizaia.service.AuthService;
@@ -81,6 +82,8 @@ public class DemoSeeder {
 
     private final AppUserRepository users;
 
+    private final AgencyRepository agencies;
+
     private final RateService rates;
 
     private final CatalogService catalogs;
@@ -101,12 +104,13 @@ public class DemoSeeder {
 
     private final String password;
 
-    public DemoSeeder(AuthService auth, AppUserRepository users, RateService rates, CatalogService catalogs, ClientService clients,
+    public DemoSeeder(AuthService auth, AppUserRepository users, AgencyRepository agencies, RateService rates, CatalogService catalogs, ClientService clients,
             KnowledgeService knowledge, BriefUploadService uploads, QuotationFacade facade,
             ApprovalQueueService approval, @Value("${demo.email}") String email,
             @Value("${demo.password}") String password) {
         this.auth = auth;
         this.users = users;
+        this.agencies = agencies;
         this.rates = rates;
         this.catalogs = catalogs;
         this.clients = clients;
@@ -131,11 +135,13 @@ public class DemoSeeder {
         thread.start();
     }
 
-    /** Loads the demo agency unless it exists; returns whether it was created. */
+    /** Loads the demo agency into an empty database only; returns whether it was created. */
     public synchronized boolean seed() {
-        // Checks the account, not the password, so a demo owner who changed it is still left alone.
-        if (users.existsByLoginEmail(email.trim().toLowerCase(Locale.ROOT))) {
-            LOGGER.info("Demo agency already loaded ({})", email);
+        // Agency names are encrypted at rest, so "is the demo already there" cannot be asked by name, and an email
+        // check alone misses a demo registered under another address (production uses demo@estudio-narino.co). A
+        // database that already holds any agency is left alone; scripts/seed_demo.py loads the demo into it instead.
+        if (users.existsByLoginEmail(email.trim().toLowerCase(Locale.ROOT)) || agencies.count() > 0) {
+            LOGGER.info("Demo agency not loaded: the database already has agencies (demo email {})", email);
             return false;
         }
         LOGGER.info("Loading demo agency '{}'", AGENCY);

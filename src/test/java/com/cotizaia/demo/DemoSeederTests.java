@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * Loads the packaged demo agency end to end (stub LLM, H2) and checks it is created once. Uses its own in-memory
@@ -51,11 +52,25 @@ class DemoSeederTests {
         Long agencyId = auth.login("demo@estudio-narino.test", "CotizaIA-demo-2026").agencyId();
         assertThat(clients.list(agencyId)).hasSize(30);
         // 24 past proposals, plus the demo proposals the app adds to memory as they are sent or accepted.
-        assertThat(knowledge.list(agencyId)).hasSizeGreaterThanOrEqualTo(24);
+        assertThat(knowledge.listWithCounts(agencyId)).hasSizeGreaterThanOrEqualTo(24);
 
         List<Proposal> all = proposals.list(agencyId, null);
         assertThat(all).hasSizeGreaterThanOrEqualTo(10);
         Set<ProposalStatus> statuses = all.stream().map(Proposal::getStatus).collect(Collectors.toSet());
         assertThat(statuses).contains(ProposalStatus.SENT, ProposalStatus.NEGOTIATING, ProposalStatus.REJECTED);
+    }
+
+    @Test
+    void leavesAnExistingDatabaseAloneEvenWhenTheDemoEmailDiffers() {
+        seeder.seed();
+        // Production already holds a demo agency registered under another email; a different DEMO_EMAIL must not
+        // make the seeder create a second agency (and spend LLM/embedding calls) on a database that is not empty.
+        Object original = ReflectionTestUtils.getField(seeder, "email");
+        ReflectionTestUtils.setField(seeder, "email", "demo@estudio-narino.co");
+        try {
+            assertThat(seeder.seed()).isFalse();
+        } finally {
+            ReflectionTestUtils.setField(seeder, "email", original);
+        }
     }
 }
