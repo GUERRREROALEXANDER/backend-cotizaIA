@@ -189,7 +189,7 @@ def seed_memory(api: Api, manifest: dict):
         api.call("POST", "/api/knowledge/documents",
                  multipart=({}, {"file": (name, pdf, "application/pdf")}))
         added += 1
-    print(f"  memoria: {added} propuestas pasadas indexadas ({len(loaded)} ya estaban)")
+    print(f"  memoria: {added} propuestas pasadas indexadas ({len(loaded)} documentos ya en memoria)")
 
 
 def process(api: Api, brief_id: int) -> Any:
@@ -229,9 +229,10 @@ def seed_briefs(api: Api, manifest: dict, contents: dict, clients: dict):
             {"clientId": clients[pid], "note": "Solicitud recibida en PDF"},
             {"file": (name, pdf, "application/pdf")}))
         result = process(api, uploaded["brief"]["id"])
-        report(pid, "PDF", uploaded["pages"], result)
         if result.get("proposalId"):
             advance(api, result["proposalId"], target)
+            result["proposalStatus"] = api.get(f"/api/proposals/{result['proposalId']}")["status"]
+        report(pid, "PDF", uploaded["pages"], result)
 
     for pid in TYPED_BRIEFS:
         channel = projects[pid]["channel"]
