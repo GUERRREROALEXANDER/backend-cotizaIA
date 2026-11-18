@@ -16,7 +16,7 @@ that mentions money, hours or numbers the client never gave.
 
 | | Value |
 |---|---|
-| Tests | 540+ (JUnit 5, Spring Boot Test, Testcontainers PostgreSQL 16 + pgvector, MockRestServiceServer) |
+| Tests | 590+ (JUnit 5, Spring Boot Test, Testcontainers PostgreSQL 16 + pgvector, MockRestServiceServer) |
 | Estimation error, offline eval (stub models) | **10.0 h MAE vs 21.0 h** for the fixed catalog: **52% lower** ([eval/report-stub.md](eval/report-stub.md)) |
 | Estimation error, real models (Groq gpt-oss-120b + Voyage voyage-4-lite) | **9.5 h MAE vs 21.0 h**: **55% lower**, 13/13 items estimated from memory with citations ([eval/report-groq.md](eval/report-groq.md)) |
 | Estimation error, Gemma 4 31B on Ollama Cloud + Voyage | **9.5 h MAE vs 21.0 h**: **55% lower**, same 13/13 from memory ([eval/report-gemma.md](eval/report-gemma.md)); the model only extracts, so equal extraction gives equal estimates |
