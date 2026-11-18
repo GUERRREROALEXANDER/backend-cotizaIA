@@ -203,11 +203,20 @@ cookies; scripts may send `Authorization: Bearer <token>` instead (no CSRF neede
 | PUT | `/api/proposals/{id}/items/{itemId}` | Adjust hours (schedule cascades; recorded as an undoable command) |
 | POST | `/api/proposals/{id}/undo` · GET `/{id}/commands` | Undo the last edit / edit history |
 | POST | `/api/proposals/{id}/approve` · `/send` · `/negotiate` · `/accept` · `/reject` · `/expire` | Lifecycle (State pattern) |
+| POST | `/api/proposals/{id}/viewed` | Mark a `SENT`/`NEGOTIATING` offer as viewed ("vista"): tracked fact, no status change (409 otherwise) |
 | POST | `/api/proposals/{id}/revise` | Revision v2 of a negotiated proposal (Prototype) |
 | GET | `/api/proposals/{id}/documents` · `/documents/{type}` | PROPOSAL, CONTRACT, SCHEDULE PDFs |
 | CRUD | `/api/catalog`, `/api/roles`, `/api/rates`, `/api/clients`, `/api/agency/pricing-model` | Agency configuration |
 | GET | `/api/analytics` · `/api/notifications` · `/api/executions` | Dashboard, feed, agent run log |
 | GET | `/actuator/health` | Health check (public, no details) |
+
+Response fields added by Spec 15 (tracking / milestones / activation):
+
+| Field | Where | Meaning |
+|---|---|---|
+| `viewedAt` | `ProposalDetailResponse` | ISO timestamp of the first view, or `null`; set once by `POST /{id}/viewed`, never changes status |
+| `projectActive` | `ProposalDetailResponse`, `AcceptanceResponse` | Derived: `true` iff the proposal's contract is `ISSUED` **and** a deposit payment exists ("Proyecto activado") |
+| `milestones` | `ProposalDetailResponse.schedule` | `[{"name","week"}]`: one `Entrega: <phase>` per phase at its `endWeek`, plus a final `Lanzamiento` at the last end week |
 
 Errors are always JSON `{"error": "..."}`: 400 validation, 401 no session, 403 missing CSRF token, 404 not found
 or another agency's, 409 conflict, 413 file too large, 422 illegal lifecycle move, 429 rate limited (with

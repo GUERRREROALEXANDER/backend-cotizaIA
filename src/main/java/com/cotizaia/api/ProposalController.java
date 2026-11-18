@@ -97,6 +97,12 @@ public class ProposalController {
         return ProposalDetailResponse.from(proposals.send(user.agencyId(), id));
     }
 
+    @PostMapping("/{id}/viewed")
+    @Operation(summary = "Mark a sent offer as viewed (tracked fact 'vista', no status change)")
+    public ProposalDetailResponse viewed(@PathVariable Long id, CurrentUser user) {
+        return ProposalDetailResponse.from(proposals.viewed(user.agencyId(), id));
+    }
+
     @PostMapping("/{id}/negotiate")
     @Operation(summary = "Negotiate proposal")
     public ProposalDetailResponse negotiate(@PathVariable Long id, CurrentUser user) {

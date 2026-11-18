@@ -7,6 +7,8 @@ import com.cotizaia.domain.ProposalDocument;
 import com.cotizaia.domain.ProposalStatus;
 import com.cotizaia.repository.ProposalRepository;
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import org.hibernate.Hibernate;
 import org.springframework.stereotype.Service;
@@ -52,6 +54,29 @@ public class ProposalService {
     @Transactional(readOnly = true)
     public Detail get(Long agencyId, Long id) {
         return detail(approval.get(agencyId, id));
+    }
+
+    /**
+     * Records the client's first view of a sent offer ("vista", Spec 15).
+     * Agency-scoped: a foreign or unknown proposal is a 404. Only a
+     * {@code SENT} or {@code NEGOTIATING} offer can be viewed (any other state
+     * is a 409). Idempotent and status-neutral: {@link Proposal#markViewed}
+     * keeps the first timestamp and never changes the lifecycle status.
+     */
+    public Detail viewed(Long agencyId, Long id) {
+        Proposal proposal = approval.get(agencyId, id);
+        if (proposal.getStatus() != ProposalStatus.SENT
+                && proposal.getStatus() != ProposalStatus.NEGOTIATING) {
+            throw new IllegalStateException(
+                    "Proposal can only be viewed in SENT or NEGOTIATING, not " + proposal.getStatus());
+        }
+        // TIMESTAMP WITH TIME ZONE has microsecond precision on both H2 and
+        // PostgreSQL. Truncating Instant.now() (nanosecond precision) makes the
+        // value set here identical to the value read back, so the first response
+        // and every later idempotent response expose the exact same timestamp.
+        proposal.markViewed(Instant.now().truncatedTo(ChronoUnit.MICROS));
+        proposals.saveAndFlush(proposal);
+        return detail(proposal);
     }
 
     public Detail adjustHours(Long agencyId, Long id, Long itemId, BigDecimal hours) {
@@ -111,8 +136,14 @@ public class ProposalService {
         if (proposal.getSchedulePlan() != null) {
             proposal.getSchedulePlan().getPhases().size();
         }
-        return new Detail(proposal, documents.list(proposal.getId()),
-                payments.findDeposit(proposal.getId()).orElse(null));
+        Payment deposit = payments.findDeposit(proposal.getId()).orElse(null);
+        if (deposit != null) {
+            // The response mapper derives projectActive from the deposit's
+            // contract status; initialize that lazy association here, inside
+            // the transaction, because open-in-view is disabled.
+            Hibernate.initialize(deposit.getContract());
+        }
+        return new Detail(proposal, documents.list(proposal.getId()), deposit);
     }
 
     /** Loaded associations needed by the proposal detail projection. */
