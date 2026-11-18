@@ -113,6 +113,17 @@ public class Proposal {
     @Column(name = "approved_at")
     private Instant approvedAt;
 
+    /**
+     * "Vista" tracking (Spec 15): the moment the client first viewed a sent
+     * offer. A plain, nullable timestamp like {@link #approvedAt} - deliberately
+     * NOT encrypted. This is a tracked fact, not a lifecycle status: it never
+     * changes {@link #status} and gets no state-machine representation. A new
+     * revision (see {@link #copy()}) starts with no view, just as it starts with
+     * no approval.
+     */
+    @Column(name = "viewed_at")
+    private Instant viewedAt;
+
     /** 1 for an original offer; each revision copies and increments it. */
     @Column(name = "revision_number", nullable = false)
     private int revisionNumber = 1;
@@ -348,6 +359,21 @@ public class Proposal {
 
     public Instant getApprovedAt() {
         return approvedAt;
+    }
+
+    /**
+     * Records that the client viewed the offer. Idempotent: only the first view
+     * is stamped, later views keep the original timestamp. Never touches
+     * {@link #status} - "vista" is a tracked fact, not a lifecycle transition.
+     */
+    public void markViewed(Instant at) {
+        if (viewedAt == null) {
+            viewedAt = at;
+        }
+    }
+
+    public Instant getViewedAt() {
+        return viewedAt;
     }
 
     /** Moves the proposal through its lifecycle; illegal jumps are rejected. */
