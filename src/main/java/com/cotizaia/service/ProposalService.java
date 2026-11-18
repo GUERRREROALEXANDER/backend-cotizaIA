@@ -58,6 +58,14 @@ public class ProposalService {
         return detail(approval.adjustHours(agencyId, id, itemId, hours));
     }
 
+    public Detail addExtra(Long agencyId, Long id, String type) {
+        return detail(approval.addExtra(agencyId, id, type));
+    }
+
+    public Detail removeExtra(Long agencyId, Long id, Long extraId) {
+        return detail(approval.removeExtra(agencyId, id, extraId));
+    }
+
     public Detail undo(Long agencyId, Long id) {
         return detail(approval.undo(agencyId, id));
     }

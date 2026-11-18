@@ -2,13 +2,22 @@ package com.cotizaia.service;
 
 import com.cotizaia.domain.Proposal;
 import com.cotizaia.domain.ProposalCommandRecord;
+import com.cotizaia.domain.ProposalExtra;
 import com.cotizaia.domain.ProposalStatus;
 import com.cotizaia.domain.QuotedItem;
 import com.cotizaia.domain.state.InvalidStateTransitionException;
 import com.cotizaia.domain.state.ProposalEvent;
 import com.cotizaia.repository.ProposalRepository;
+import com.cotizaia.service.command.AddExtraCommand;
 import com.cotizaia.service.command.AdjustHoursCommand;
 import com.cotizaia.service.command.CommandHistory;
+import com.cotizaia.service.command.RemoveExtraCommand;
+import com.cotizaia.domain.BaseProposalPrice;
+import com.cotizaia.domain.DiscountDecorator;
+import com.cotizaia.domain.ExtendedWarrantyDecorator;
+import com.cotizaia.domain.PricedProposal;
+import com.cotizaia.domain.ProposalPriceDecorator;
+import com.cotizaia.domain.UrgencyDecorator;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -24,6 +33,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional
 public class ApprovalQueueService {
+
+    /** Flat fee applied by the EXTENDED_WARRANTY extra, the only fixed-price decorator. */
+    static final BigDecimal WARRANTY_FEE = new BigDecimal("500000.00");
 
     private final ProposalRepository proposals;
 
@@ -66,6 +78,64 @@ public class ApprovalQueueService {
         commandHistory.run(proposal,
                 new AdjustHoursCommand(item.getRequirement().getId(), item.getHours(), hours));
         return proposals.saveAndFlush(proposal);
+    }
+
+    /**
+     * Applies one price extra through the real Decorator chain and records it as
+     * a reversible command. The chain starts at the item-derived subtotal and is
+     * rebuilt over the already-applied extras (in application order), so the new
+     * wrapper compounds exactly like the decorators do in the domain and its
+     * signed delta is measured against the running total.
+     */
+    public Proposal addExtra(Long agencyId, Long proposalId, String type) {
+        Proposal proposal = get(agencyId, proposalId);
+        requireExtrasEditable(proposal);
+        if (proposal.getAppliedExtras().stream().anyMatch(extra -> extra.getType().equals(type))) {
+            throw new IllegalStateException("Extra already applied: " + type);
+        }
+        PricedProposal chain = new BaseProposalPrice(proposal);
+        for (ProposalExtra applied : proposal.getAppliedExtras()) {
+            chain = decoratorFor(applied.getType(), chain, applied.getPercentOrFixed());
+        }
+        ProposalPriceDecorator extra = decoratorFor(type, chain,
+                ExtendedWarrantyDecorator.TYPE.equals(type) ? WARRANTY_FEE : BigDecimal.ZERO);
+        commandHistory.run(proposal, new AddExtraCommand(extra.extraType(), extra.value(), extra.amount()));
+        documents.generateFor(proposalId, null);
+        return proposals.saveAndFlush(proposal);
+    }
+
+    /**
+     * Drops one applied extra and recomputes the total from the remaining
+     * signed deltas, recording the removal as a reversible command.
+     */
+    public Proposal removeExtra(Long agencyId, Long proposalId, Long extraId) {
+        Proposal proposal = get(agencyId, proposalId);
+        requireExtrasEditable(proposal);
+        ProposalExtra extra = proposal.getAppliedExtras().stream()
+                .filter(candidate -> candidate.getId().equals(extraId))
+                .findFirst()
+                .orElseThrow(() -> new NoSuchElementException("Extra not found: " + extraId));
+        commandHistory.run(proposal, new RemoveExtraCommand(extra.getId(), extra.getType(),
+                extra.getPercentOrFixed(), extra.getAmount()));
+        documents.generateFor(proposalId, null);
+        return proposals.saveAndFlush(proposal);
+    }
+
+    /** Extras touch the commercial offer only while it is still being reviewed and not yet approved. */
+    private void requireExtrasEditable(Proposal proposal) {
+        if (proposal.getStatus() != ProposalStatus.IN_REVIEW || proposal.isApproved()) {
+            throw new IllegalStateException("Extras can only be changed while the proposal is in review and not approved");
+        }
+    }
+
+    /** Builds the real decorator for one extra kind; a new kind needs no change here beyond a new case. */
+    private ProposalPriceDecorator decoratorFor(String type, PricedProposal delegate, BigDecimal value) {
+        return switch (type) {
+            case UrgencyDecorator.TYPE -> new UrgencyDecorator(delegate);
+            case DiscountDecorator.TYPE -> new DiscountDecorator(delegate);
+            case ExtendedWarrantyDecorator.TYPE -> new ExtendedWarrantyDecorator(delegate, value);
+            default -> throw new IllegalArgumentException("Unknown extra type: " + type);
+        };
     }
 
     public Proposal undo(Long agencyId, Long proposalId) {
