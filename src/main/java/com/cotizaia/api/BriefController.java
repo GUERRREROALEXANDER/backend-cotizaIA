@@ -1,5 +1,6 @@
 package com.cotizaia.api;
 
+import com.cotizaia.agent.PipelineProgressRegistry;
 import com.cotizaia.domain.Brief;
 import com.cotizaia.domain.BriefAttachment;
 import com.cotizaia.facade.QuotationFacade;
@@ -48,12 +49,15 @@ public class BriefController {
 
     private final BriefUploadService uploads;
 
+    private final PipelineProgressRegistry progress;
+
     public BriefController(BriefService briefService, BriefDetailService details, QuotationFacade facade,
-            BriefUploadService uploads) {
+            BriefUploadService uploads, PipelineProgressRegistry progress) {
         this.briefService = briefService;
         this.details = details;
         this.facade = facade;
         this.uploads = uploads;
+        this.progress = progress;
     }
 
     @PostMapping
@@ -75,6 +79,17 @@ public class BriefController {
     @Operation(summary = "Get brief details")
     public BriefDetailResponse get(@PathVariable Long id, CurrentUser user) {
         return BriefDetailResponse.from(details.get(user.agencyId(), id));
+    }
+
+    /**
+     * Live pipeline view (spec 13). The scoped lookup runs first: a brief of another
+     * agency and an unknown id must both answer 404 before any in-memory state is read.
+     */
+    @GetMapping("/{id}/progress")
+    @Operation(summary = "Get the live pipeline progress of a brief")
+    public PipelineProgressResponse progress(@PathVariable Long id, CurrentUser user) {
+        briefService.get(user.agencyId(), id);
+        return PipelineProgressResponse.from(progress.snapshot(id));
     }
 
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
