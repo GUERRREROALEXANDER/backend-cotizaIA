@@ -5,6 +5,9 @@ import com.cotizaia.domain.Agency;
 import com.cotizaia.domain.AppUser;
 import com.cotizaia.domain.RefreshToken;
 import com.cotizaia.domain.UserRole;
+import com.cotizaia.mail.EmailNotVerifiedException;
+import com.cotizaia.mail.EmailVerificationService;
+import com.cotizaia.mail.MailProperties;
 import com.cotizaia.repository.AgencyRepository;
 import com.cotizaia.crypto.BlindIndex;
 import com.cotizaia.repository.AppUserRepository;
@@ -45,6 +48,10 @@ public class AuthService {
 
     private final BlindIndex blindIndex;
 
+    private final MailProperties mail;
+
+    private final EmailVerificationService verification;
+
     private final String dummyHash;
 
     private final TransactionTemplate transactionTemplate;
@@ -52,6 +59,7 @@ public class AuthService {
     public AuthService(AgencyRepository agencies, AppUserRepository users,
             RefreshTokenRepository refreshTokens, PasswordEncoder passwords, JwtTokenService tokens,
             BlindIndex blindIndex, SecurityProperties securityProperties,
+            MailProperties mail, EmailVerificationService verification,
             PlatformTransactionManager transactionManager) {
         this.agencies = agencies;
         this.users = users;
@@ -60,6 +68,8 @@ public class AuthService {
         this.tokens = tokens;
         this.blindIndex = blindIndex;
         this.securityProperties = securityProperties;
+        this.mail = mail;
+        this.verification = verification;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
         this.transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         this.dummyHash = passwords.encode(UUID.randomUUID().toString());
@@ -74,15 +84,21 @@ public class AuthService {
         if (users.existsByLoginEmail(loginEmail)) {
             throw new IllegalStateException("Email is already registered");
         }
+        // Spec 16: the flag only bites when a mailer exists to complete the flow.
+        boolean verificationRequired = mail.isLoginVerificationRequired();
         Agency agency = new Agency(agencyName);
         AppUser owner = new AppUser(agency, ownerFullName, loginEmail, UserRole.OWNER);
+        owner.setEmailVerified(!verificationRequired);
         owner.assignCredentials(loginEmail, passwords.encode(rawPassword));
         owner.setEmailHash(blindIndex.hash(owner.getEmail()));
         owner.setLoginEmailHash(blindIndex.hash(owner.getLoginEmail()));
         agency.addUser(owner);
         agencies.saveAndFlush(agency);
+        if (mail.isEnabled()) {
+            verification.sendVerification(owner);
+        }
         return new RegistrationResult(agency.getId(), owner.getId(), owner.getRole().name(),
-                tokens.issue(owner), issueRefreshToken(owner));
+                verificationRequired, tokens.issue(owner), issueRefreshToken(owner));
     }
 
     @Transactional
@@ -93,8 +109,23 @@ public class AuthService {
         if (user == null || !user.hasCredentials() || !matches) {
             throw new BadCredentialsException("Invalid email or password");
         }
+        // Checked after the password so an unverified account is only revealed to its owner.
+        if (mail.isLoginVerificationRequired() && !user.isEmailVerified()) {
+            throw new EmailNotVerifiedException();
+        }
         return new LoginResult(user.getAgency().getId(), user.getId(), user.getRole().name(),
                 tokens.issue(user), issueRefreshToken(user));
+    }
+
+    /** Redeems a verification link (spec 16); an unusable token surfaces as a 400, not a 500. */
+    @Transactional
+    public void verifyEmail(String token) {
+        verification.verify(token);
+    }
+
+    /** Asks for another verification link; the answer is identical whether or not the account exists. */
+    public void resendVerification(String email) {
+        verification.resend(email);
     }
 
     /**
@@ -177,8 +208,12 @@ public class AuthService {
         return email.trim().toLowerCase(Locale.ROOT);
     }
 
-    /** Registration identity and issued session tokens, without credential material. */
-    public record RegistrationResult(Long agencyId, Long userId, String role,
+    /**
+     * Registration identity and issued session tokens, without credential material.
+     * {@code emailVerificationRequired} tells the client to show the "check your mailbox" screen:
+     * it is true only when mail is enabled and the deployment enforces verification.
+     */
+    public record RegistrationResult(Long agencyId, Long userId, String role, boolean emailVerificationRequired,
             JwtTokenService.IssuedToken accessToken, IssuedRefreshToken refreshToken) {
     }
 

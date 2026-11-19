@@ -16,7 +16,7 @@ that mentions money, hours or numbers the client never gave.
 
 | | Value |
 |---|---|
-| Tests | 540+ (JUnit 5, Spring Boot Test, Testcontainers PostgreSQL 16 + pgvector, MockRestServiceServer) |
+| Tests | 590+ (JUnit 5, Spring Boot Test, Testcontainers PostgreSQL 16 + pgvector, MockRestServiceServer) |
 | Estimation error, offline eval (stub models) | **10.0 h MAE vs 21.0 h** for the fixed catalog: **52% lower** ([eval/report-stub.md](eval/report-stub.md)) |
 | Estimation error, real models (Groq gpt-oss-120b + Voyage voyage-4-lite) | **9.5 h MAE vs 21.0 h**: **55% lower**, 13/13 items estimated from memory with citations ([eval/report-groq.md](eval/report-groq.md)) |
 | Estimation error, Gemma 4 31B on Ollama Cloud + Voyage | **9.5 h MAE vs 21.0 h**: **55% lower**, same 13/13 from memory ([eval/report-gemma.md](eval/report-gemma.md)); the model only extracts, so equal extraction gives equal estimates |
@@ -33,7 +33,7 @@ agent MAE ≤ 0.70 × catalog MAE.
 |---|---|
 | Language / framework | Java 17, Spring Boot 3.5 (Maven) |
 | Database | PostgreSQL 16 + **pgvector** on Supabase; H2 in unit tests, real PostgreSQL in Testcontainers |
-| Migrations | Flyway `V1`…`V27`, vendor-specific folder for pgvector; Hibernate only validates |
+| Migrations | Flyway `V1`…`V30`, vendor-specific folder for pgvector; Hibernate only validates |
 | AI | `LlmClient` (Ollama Cloud Gemma 4 / Groq / local Ollama / offline stub) + `EmbeddingClient` (Voyage / Ollama / stub), one provider family per deploy |
 | Security | Spring Security, JWT in HttpOnly cookies, CSRF double submit, rotating refresh tokens, AES-256-GCM field encryption, rate limits |
 | PDF | OpenPDF (generate), PDFBox (read) |
@@ -115,7 +115,7 @@ Limitation: rate-limit counters live in memory, per instance. With more than one
 | Creational | Factory Method | `agent.knowledge.KnowledgeIngestor.createChunker()` → PDF / approved-proposal chunkers | `ProposalPdfIngestorTests` |
 | Creational | Abstract Factory | `agent.embedding.AiProviderFactory` → `{LlmClient, EmbeddingClient}` families (stub / cloud / ollama) | `AiProviderFactoryTests` |
 | Creational | Prototype | `domain.Proposal.copy()`: revision v2 of a negotiated proposal, deep copy, v1 frozen | `ProposalPrototypeTests` |
-| Structural | Adapter | `GroqClient` / `OllamaClient` behind `LlmClient`; `VoyageEmbeddingClient` behind `EmbeddingClient`; brief channel adapters; `SimulatedPaymentGateway` | `GroqClientTests`, `VoyageEmbeddingClientTests`, `BriefSourceAdapterTests` |
+| Structural | Adapter | `GroqClient` / `OllamaClient` behind `LlmClient`; `VoyageEmbeddingClient` behind `EmbeddingClient`; brief channel adapters; `SimulatedPaymentGateway`; `mail.EmailGateway` → `SmtpEmailGateway` / `NoopEmailGateway` | `GroqClientTests`, `VoyageEmbeddingClientTests`, `BriefSourceAdapterTests`, `SmtpEmailGatewayTests` |
 | Structural | Bridge | `KnowledgeRetriever` (past items / passages) × `VectorStore` (pgvector / portable JDBC) | `KnowledgeRetrieverTests`, `VectorStoreContract` on H2 and real PostgreSQL |
 | Structural | Composite | `document.DocumentNode`: section / paragraph / bullet list tree of the drafted PDF | `DocumentNodeTests` |
 | Structural | Decorator | Price extras (urgency, discount, warranty); `RetryLlmClient`; `RetryEmbeddingClient` | `ProposalPricingDecoratorTests`, `RetryLlmClientTests`, `RetryEmbeddingClientTests` |
@@ -123,7 +123,7 @@ Limitation: rate-limit counters live in memory, per instance. With more than one
 | Structural | Proxy | `agent.embedding.CachingEmbeddingClient` (LRU cache in front of the paid embedder) | `CachingEmbeddingClientTests` |
 | Behavioral | Chain of Responsibility | 8 pipeline handlers, Classify → … → Compose; `FallbackLlmClient` tries Gemma 4 then Groq | `PipelineHandlerTests`, `AgentPipelineIntegrationTests`, `FallbackLlmClientTests` |
 | Behavioral | Command | `service.command.AdjustHoursCommand` + `CommandHistory` (undo hour edits) | `AdjustHoursCommandTests`, `ProposalRevisionAndUndoFlowTests` |
-| Behavioral | Observer | `notification.ProposalSubject` → email, dashboard, analytics and `KnowledgeObserver` (learning loop) | `ProposalSubjectTests`, `KnowledgeObserverTests` |
+| Behavioral | Observer | `notification.ProposalSubject` → email, dashboard, analytics and `KnowledgeObserver` (learning loop); `mail.DocumentEmailObserver` (`@TransactionalEventListener(AFTER_COMMIT)`) mails the proposal/contract PDF | `ProposalSubjectTests`, `KnowledgeObserverTests`, `DocumentEmailTests` |
 | Behavioral | State | `domain.state.*`: 10 proposal states, illegal moves → 422 | `ProposalStateTransitionTests` |
 | Behavioral | Strategy | Pricing (hourly / fixed / phased); estimation (memory → catalog → default) | `PricingStrategyTests`, `RetrievalEstimationTests` |
 | Behavioral | Template Method | `AbstractDocumentTemplate`; `PipelineRunRecorder`; `KnowledgeIngestor.ingest()` | `DocumentGeneratorTests`, `PipelineRunRecorderTests` |
@@ -175,6 +175,10 @@ contract, schedule and simulated deposit, so every screen of the frontend has da
 It is idempotent (a second run only fills what is missing; `--force` adds another round of briefs) and takes
 `--base-url` when the backend is not on `http://localhost:8080`. Standard library only, Python 3.9+.
 
+With email verification on (`MAIL_VERIFICATION_REQUIRED=true`) the demo is unaffected: `DemoSeeder` marks its
+owner verified. The Python script needs no `/verify-email` call either, because the demo deploy keeps the flag off
+(`MAIL_ENABLED=false` by default), so its account is created already verified.
+
 - Tests: `./mvnw test` (Docker needed for the PostgreSQL + pgvector tests; they are skipped without it locally,
   and CI fails if they are skipped).
 - Real-model eval (~20 min on free tiers): `GROQ_API_KEY=… VOYAGE_API_KEY=… ./mvnw test -Dtest=EstimationEvalTests -Deval.provider=groq`
@@ -191,6 +195,7 @@ cookies; scripts may send `Authorization: Bearer <token>` instead (no CSRF neede
 |---|---|---|
 | POST | `/api/auth/register` · `/login` | Create agency + owner / log in. Sets `cz_access` + `cz_refresh` HttpOnly cookies; the body has no token |
 | POST | `/api/auth/refresh` · `/logout` | Rotate / revoke the session (CSRF required) |
+| POST | `/api/auth/verify-email` · `/resend-verification` | Redeem the mailed one-time link (204 / 400) / ask for another link (always 204, no account enumeration) |
 | GET | `/api/auth/csrf` · `/me` | Issue the `XSRF-TOKEN` cookie / current identity |
 | POST | `/api/quotations` | Star path: ingest a brief and run the whole agent in one call |
 | GET · POST | `/api/briefs` | List (newest first) / ingest a brief (EMAIL, WHATSAPP, WEB_FORM) |
@@ -203,15 +208,46 @@ cookies; scripts may send `Authorization: Bearer <token>` instead (no CSRF neede
 | PUT | `/api/proposals/{id}/items/{itemId}` | Adjust hours (schedule cascades; recorded as an undoable command) |
 | POST | `/api/proposals/{id}/undo` · GET `/{id}/commands` | Undo the last edit / edit history |
 | POST | `/api/proposals/{id}/approve` · `/send` · `/negotiate` · `/accept` · `/reject` · `/expire` | Lifecycle (State pattern) |
+| POST | `/api/proposals/{id}/viewed` | Mark a `SENT`/`NEGOTIATING` offer as viewed ("vista"): tracked fact, no status change (409 otherwise) |
 | POST | `/api/proposals/{id}/revise` | Revision v2 of a negotiated proposal (Prototype) |
 | GET | `/api/proposals/{id}/documents` · `/documents/{type}` | PROPOSAL, CONTRACT, SCHEDULE PDFs |
 | CRUD | `/api/catalog`, `/api/roles`, `/api/rates`, `/api/clients`, `/api/agency/pricing-model` | Agency configuration |
 | GET | `/api/analytics` · `/api/notifications` · `/api/executions` | Dashboard, feed, agent run log |
 | GET | `/actuator/health` | Health check (public, no details) |
 
+Response fields added by Spec 15 (tracking / milestones / activation):
+
+| Field | Where | Meaning |
+|---|---|---|
+| `viewedAt` | `ProposalDetailResponse` | ISO timestamp of the first view, or `null`; set once by `POST /{id}/viewed`, never changes status |
+| `projectActive` | `ProposalDetailResponse`, `AcceptanceResponse` | Derived: `true` iff the proposal's contract is `ISSUED` **and** a deposit payment exists ("Proyecto activado") |
+| `milestones` | `ProposalDetailResponse.schedule` | `[{"name","week"}]`: one `Entrega: <phase>` per phase at its `endWeek`, plus a final `Lanzamiento` at the last end week |
+
 Errors are always JSON `{"error": "..."}`: 400 validation, 401 no session, 403 missing CSRF token, 404 not found
 or another agency's, 409 conflict, 413 file too large, 422 illegal lifecycle move, 429 rate limited (with
 `Retry-After`), 503 agent run failed (with `executionId`).
+
+## Email (spec 16)
+
+Off by default: with `MAIL_ENABLED=false` the context wires `NoopEmailGateway`, opens no SMTP connection, creates
+no `JavaMailSender`, and leaves one log line per message (`email skipped: <subject>`, never an address or a body).
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MAIL_ENABLED` | `false` | Master switch; `true` wires `SmtpEmailGateway` |
+| `MAIL_HOST` / `MAIL_PORT` | `localhost` / `587` | SMTP relay |
+| `MAIL_USERNAME` / `MAIL_PASSWORD` | empty | Relay credentials; secrets only from the environment |
+| `MAIL_FROM` | `no-reply@cotizaia.local` | Sender address |
+| `MAIL_STARTTLS` | `true` | STARTTLS on the submission port |
+| `APP_PUBLIC_URL` | `http://localhost:5173` | Base of the mailed link: `<APP_PUBLIC_URL>/verify-email?token=…` |
+| `MAIL_VERIFICATION_REQUIRED` | `false` | `true`: new accounts start unverified and login answers 403 until the link is used |
+| `MAIL_SEND_TO_CLIENT` | `false` | `true`: sent documents are also mailed to the client's address on file |
+
+What is mailed: a Spanish verification message at registration (token of 32 random bytes, only its SHA-256 stored,
+24 h, single use), the proposal PDF after `POST /api/proposals/{id}/send`, and the contract PDF after `/{id}/accept`
+with the deposit amount and its reference. Documents go to the authenticated user who performed the action, plus the
+client only with `MAIL_SEND_TO_CLIENT=true`; the body never carries a session token and delivery runs after the
+transaction commits, so a dead SMTP server can never undo a send or fail the HTTP call.
 
 ## Deploy (free)
 

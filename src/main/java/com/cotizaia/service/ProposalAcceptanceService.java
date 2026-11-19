@@ -6,12 +6,15 @@ import com.cotizaia.domain.Payment;
 import com.cotizaia.domain.Proposal;
 import com.cotizaia.domain.ProposalStatus;
 import com.cotizaia.domain.state.InvalidStateTransitionException;
+import com.cotizaia.config.CurrentActor;
 import com.cotizaia.domain.state.ProposalEvent;
+import com.cotizaia.mail.ProposalDocumentEmailEvent;
 import com.cotizaia.repository.ContractRepository;
 import com.cotizaia.repository.ProposalRepository;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.NoSuchElementException;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,12 +31,19 @@ public class ProposalAcceptanceService {
     private final PaymentService paymentService;
     private final ProposalRepository proposals;
 
+    private final ApplicationEventPublisher events;
+
+    private final CurrentActor actor;
+
     public ProposalAcceptanceService(ContractRepository contracts, ContractService contractService,
-            PaymentService paymentService, ProposalRepository proposals) {
+            PaymentService paymentService, ProposalRepository proposals,
+            ApplicationEventPublisher events, CurrentActor actor) {
         this.contracts = contracts;
         this.contractService = contractService;
         this.paymentService = paymentService;
         this.proposals = proposals;
+        this.events = events;
+        this.actor = actor;
     }
 
     @Transactional
@@ -50,6 +60,10 @@ public class ProposalAcceptanceService {
         }
         Contract contract = contractService.acceptAndIssue(proposalId);
         Payment payment = paymentService.recordSimulatedDeposit(proposal, contract);
+        // Spec 16: the contract PDF is mailed once this acceptance is durable, to the person who
+        // accepted it; a mail failure is logged and never rolls the deposit back.
+        events.publishEvent(ProposalDocumentEmailEvent.accepted(proposalId, actor.userId().orElse(null),
+                payment.getAmount(), payment.getProviderRef()));
         return AcceptanceResult.from(proposal, contract, payment);
     }
 

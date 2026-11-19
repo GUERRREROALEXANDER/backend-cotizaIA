@@ -40,12 +40,15 @@ public class PipelineRunRecorder {
 
     private final AgentExecutionRepository agentExecutionRepository;
     private final TransactionTemplate transactionTemplate;
+    private final PipelineProgressRegistry progress;
 
     public PipelineRunRecorder(
             AgentExecutionRepository agentExecutionRepository,
-            TransactionTemplate transactionTemplate) {
+            TransactionTemplate transactionTemplate,
+            PipelineProgressRegistry progress) {
         this.agentExecutionRepository = agentExecutionRepository;
         this.transactionTemplate = transactionTemplate;
+        this.progress = progress;
     }
 
     /**
@@ -55,6 +58,8 @@ public class PipelineRunRecorder {
      *         has been committed as FAILED.
      */
     public AgentRun run(Brief brief, List<PipelineStep> steps) {
+        // Opened before the transaction so a poller sees the run while the tx is still open.
+        progress.start(brief.getId());
         RunOutcome outcome = transactionTemplate.execute(status -> executeWithinTransaction(brief, steps));
         if (outcome.failure() != null) {
             throw new PipelineFailedException(outcome.executionId(), outcome.failure());
@@ -67,6 +72,8 @@ public class PipelineRunRecorder {
      * A deliberate HALT is successful because it produces clarification questions rather than a technical failure.
      */
     public AgentRun runChain(Brief brief, PipelineHandler head, PipelineContext context) {
+        // Opened before the transaction for the same reason as run(): the live view cannot wait for commit.
+        progress.start(brief.getId());
         RunOutcome outcome = transactionTemplate.execute(status -> executeChain(brief, head, context));
         if (outcome.failure() != null) {
             throw new PipelineFailedException(outcome.executionId(), outcome.failure());
@@ -81,9 +88,12 @@ public class PipelineRunRecorder {
             head.handle(context, (handler, input, output, duration, stepStatus) -> {
                 execution.addStep(handler, summarize(input), summarize(output), duration, stepStatus);
                 agentExecutionRepository.saveAndFlush(execution);
+                progress.step(brief.getId(), handler, stepStatus);
             });
             execution.succeed(Instant.now());
             agentExecutionRepository.saveAndFlush(execution);
+            // A HALT ends the chain normally, so success is the right close for the live view too.
+            progress.finish(brief.getId());
             return new RunOutcome(execution, context, null);
         } catch (RuntimeException failure) {
             String handler = context.getCurrentHandler() == null ? "pipeline" : context.getCurrentHandler();
@@ -93,6 +103,7 @@ public class PipelineRunRecorder {
                     Instant.now());
             agentExecutionRepository.saveAndFlush(execution);
             logFailure(execution, handler, failure);
+            progress.fail(brief.getId(), handler);
             return new RunOutcome(execution, context, failure);
         }
     }
@@ -104,10 +115,11 @@ public class PipelineRunRecorder {
         Object context = brief;
         try {
             for (PipelineStep step : steps) {
-                context = recordStep(execution, step, context);
+                context = recordStep(brief.getId(), execution, step, context);
             }
             execution.succeed(Instant.now());
             agentExecutionRepository.saveAndFlush(execution);
+            progress.finish(brief.getId());
             return new RunOutcome(execution, context, null);
         } catch (RuntimeException failure) {
             // The log must survive the failure, so the execution is closed here
@@ -123,11 +135,12 @@ public class PipelineRunRecorder {
             execution.fail(failure.getMessage() != null ? failure.getMessage() : failure.toString(), Instant.now());
             agentExecutionRepository.saveAndFlush(execution);
             logFailure(execution, handler, failure);
+            progress.fail(brief.getId(), handler);
             return new RunOutcome(execution, context, failure);
         }
     }
 
-    private Object recordStep(AgentExecution execution, PipelineStep step, Object context) {
+    private Object recordStep(Long briefId, AgentExecution execution, PipelineStep step, Object context) {
         Instant start = Instant.now();
         Object output = step.execute(context);
         long durationMs = Duration.between(start, Instant.now()).toMillis();
@@ -138,6 +151,7 @@ public class PipelineRunRecorder {
                 durationMs,
                 StepStatus.SUCCEEDED);
         agentExecutionRepository.saveAndFlush(execution);
+        progress.step(briefId, step.name(), StepStatus.SUCCEEDED);
         return output;
     }
 

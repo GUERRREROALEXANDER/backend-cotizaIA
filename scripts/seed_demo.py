@@ -63,6 +63,9 @@ class Api:
     def __init__(self, base_url: str):
         self.base = base_url.rstrip("/")
         self.token: str | None = None
+        # Kept so a long run (real models: Voyage allows 3 requests/min) can sign in again
+        # when the 15-minute access cookie expires.
+        self.credentials: dict | None = None
 
     def call(self, method: str, path: str, body=None, *, multipart=None, auth=True) -> tuple[Any, Any]:
         headers = {"Accept": "application/json"}
@@ -76,6 +79,7 @@ class Api:
         if auth and self.token:
             headers["Authorization"] = f"Bearer {self.token}"
 
+        relogged = False
         for _ in range(8):
             request = urllib.request.Request(self.base + path, data=data, method=method, headers=headers)
             try:
@@ -88,6 +92,13 @@ class Api:
                     wait = int(error.headers.get("Retry-After", "10"))
                     print(f"    límite de IA alcanzado, esperando {wait}s…")
                     time.sleep(wait + 1)
+                    continue
+                if error.code == 401 and auth and self.credentials and not relogged:
+                    relogged = True
+                    print("    sesión vencida, iniciando sesión de nuevo…")
+                    _, login_headers = self.call("POST", "/api/auth/login", self.credentials, auth=False)
+                    self.token = access_token(login_headers)
+                    headers["Authorization"] = f"Bearer {self.token}"
                     continue
                 raise ApiError(error.code, text) from None
         raise ApiError(429, "demasiados reintentos")
@@ -130,6 +141,7 @@ def slug(text: str, sep: str = ".") -> str:
 def sign_in(api: Api) -> bool:
     """Devuelve True si la agencia se acaba de crear."""
     credentials = {"email": DEMO_EMAIL, "password": DEMO_PASSWORD}
+    api.credentials = credentials
     try:
         _, headers = api.call("POST", "/api/auth/login", credentials, auth=False)
         api.token = access_token(headers)

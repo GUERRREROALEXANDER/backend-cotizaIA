@@ -1,0 +1,12 @@
+--
+-- Spec 15: "vista" tracking. Records the moment the client first viewed a sent
+-- offer. This is a tracked fact, NOT a lifecycle status: no new ProposalStatus
+-- value and no state-machine change. The column is a plain, nullable timestamp
+-- (like approved_at from V18), deliberately NOT routed through a crypto
+-- converter, so the value stays a readable TIMESTAMP WITH TIME ZONE.
+--
+-- Portable: works on H2 (PostgreSQL mode) and on real PostgreSQL, so it lives
+-- in the shared db/migration folder instead of the vendor-specific folders
+-- (which are reserved for statements such as V24's CREATE EXTENSION vector).
+--
+ALTER TABLE proposals ADD COLUMN viewed_at TIMESTAMP WITH TIME ZONE;

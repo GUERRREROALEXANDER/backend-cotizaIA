@@ -52,14 +52,21 @@ public class CommandHistory {
     }
 
     private ProposalCommand rebuild(ProposalCommandRecord record) {
-        if (!AdjustHoursCommand.TYPE.equals(record.getCommandType())) {
-            throw new IllegalStateException("Unknown command type: " + record.getCommandType());
-        }
         try {
             JsonNode payload = json.readTree(record.getPayload());
-            return new AdjustHoursCommand(payload.get("requirementId").asLong(),
-                    new BigDecimal(payload.get("before").asText()),
-                    new BigDecimal(payload.get("after").asText()));
+            return switch (record.getCommandType()) {
+                case AdjustHoursCommand.TYPE -> new AdjustHoursCommand(payload.get("requirementId").asLong(),
+                        new BigDecimal(payload.get("before").asText()),
+                        new BigDecimal(payload.get("after").asText()));
+                case AddExtraCommand.TYPE -> new AddExtraCommand(payload.get("type").asText(),
+                        new BigDecimal(payload.get("percentOrFixed").asText()),
+                        new BigDecimal(payload.get("amount").asText()));
+                case RemoveExtraCommand.TYPE -> new RemoveExtraCommand(payload.get("extraId").asLong(),
+                        payload.get("type").asText(),
+                        new BigDecimal(payload.get("percentOrFixed").asText()),
+                        new BigDecimal(payload.get("amount").asText()));
+                default -> throw new IllegalStateException("Unknown command type: " + record.getCommandType());
+            };
         } catch (IOException | RuntimeException exception) {
             throw new IllegalStateException("Corrupt command payload for record " + record.getId(), exception);
         }

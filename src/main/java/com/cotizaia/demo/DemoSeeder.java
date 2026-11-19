@@ -7,6 +7,7 @@ import com.cotizaia.domain.Role;
 import com.cotizaia.domain.ServiceCatalog;
 import com.cotizaia.facade.QuotationFacade;
 import com.cotizaia.facade.QuotationResult;
+import com.cotizaia.mail.EmailVerificationService;
 import com.cotizaia.repository.AgencyRepository;
 import com.cotizaia.repository.AppUserRepository;
 import com.cotizaia.service.ApprovalQueueService;
@@ -100,13 +101,16 @@ public class DemoSeeder {
 
     private final ObjectMapper mapper = new ObjectMapper();
 
+    private final EmailVerificationService verification;
+
     private final String email;
 
     private final String password;
 
     public DemoSeeder(AuthService auth, AppUserRepository users, AgencyRepository agencies, RateService rates, CatalogService catalogs, ClientService clients,
             KnowledgeService knowledge, BriefUploadService uploads, QuotationFacade facade,
-            ApprovalQueueService approval, @Value("${demo.email}") String email,
+            ApprovalQueueService approval, EmailVerificationService verification,
+            @Value("${demo.email}") String email,
             @Value("${demo.password}") String password) {
         this.auth = auth;
         this.users = users;
@@ -118,6 +122,7 @@ public class DemoSeeder {
         this.uploads = uploads;
         this.facade = facade;
         this.approval = approval;
+        this.verification = verification;
         this.email = email;
         this.password = password;
     }
@@ -147,6 +152,8 @@ public class DemoSeeder {
         LOGGER.info("Loading demo agency '{}'", AGENCY);
         JsonNode manifest = json("manifest.json");
         Long agencyId = auth.register(AGENCY, OWNER, email, password).agencyId();
+        // Spec 16: the demo owner is trusted, so MAIL_VERIFICATION_REQUIRED=true never locks the demo out.
+        verification.markVerified(email);
 
         rate(agencyId, "Desarrollo web", manifest.path("rateCopPerHour").asLong());
         rate(agencyId, "Diseño y marca", 85_000);

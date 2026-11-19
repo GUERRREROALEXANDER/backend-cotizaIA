@@ -70,6 +70,14 @@ public class AppUser {
     @Column(name = "owner_flag")
     private Boolean ownerFlag;
 
+    /**
+     * Spec 16: TRUE once the account owner proved control of the mailbox. It starts TRUE so
+     * accounts that predate the feature (and every user created while verification is not
+     * required) can log in; only a register call with MAIL_VERIFICATION_REQUIRED=true stores FALSE.
+     */
+    @Column(name = "email_verified", nullable = false)
+    private boolean emailVerified = true;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -110,6 +118,19 @@ public class AppUser {
 
     public boolean hasCredentials() {
         return loginEmail != null && passwordHash != null;
+    }
+
+    public boolean isEmailVerified() {
+        return emailVerified;
+    }
+
+    public void setEmailVerified(boolean emailVerified) {
+        this.emailVerified = emailVerified;
+    }
+
+    /** Marks the mailbox as proven; idempotent, so a second successful redemption changes nothing. */
+    public void markEmailVerified() {
+        this.emailVerified = true;
     }
 
     public Long getId() {

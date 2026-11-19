@@ -69,7 +69,9 @@ public class SecurityConfiguration {
 
     private static final Set<String> STATE_CHANGING_METHODS = Set.of("POST", "PUT", "PATCH", "DELETE");
 
-    private static final Set<String> CSRF_EXEMPT_PATHS = Set.of("/api/auth/register", "/api/auth/login");
+    private static final Set<String> CSRF_EXEMPT_PATHS = Set.of("/api/auth/register", "/api/auth/login",
+            // Spec 16: a caller redeeming a mailed link has no session yet, so no cookie to forge.
+            "/api/auth/verify-email", "/api/auth/resend-verification");
 
     @Bean
     public SecretKey jwtSecretKey(SecurityProperties properties) {
@@ -147,7 +149,8 @@ public class SecurityConfiguration {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/api/auth/register", "/api/auth/login", "/api/auth/refresh",
-                                "/api/auth/logout", "/api/auth/csrf").permitAll()
+                                "/api/auth/logout", "/api/auth/csrf",
+                                "/api/auth/verify-email", "/api/auth/resend-verification").permitAll()
                         .requestMatchers(HttpMethod.GET, "/actuator/health/**").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/error").permitAll()
                         .anyRequest().authenticated())

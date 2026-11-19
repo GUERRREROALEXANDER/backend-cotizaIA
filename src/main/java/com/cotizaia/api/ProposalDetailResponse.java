@@ -3,6 +3,7 @@ package com.cotizaia.api;
 import com.cotizaia.agent.pipeline.Citation;
 import com.cotizaia.agent.pipeline.EstimateSource;
 import com.cotizaia.document.ProposalDraft;
+import com.cotizaia.domain.ContractStatus;
 import com.cotizaia.domain.ExtractedRequirement;
 import com.cotizaia.domain.Payment;
 import com.cotizaia.domain.Phase;
@@ -16,6 +17,7 @@ import com.cotizaia.pricing.PricingModel;
 import com.cotizaia.service.ProposalService.Detail;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -25,23 +27,27 @@ import java.util.Set;
  */
 public record ProposalDetailResponse(Long id, Long briefId, ProposalStatus status, int revisionNumber,
         Long revisionOf, Set<ProposalStatus> allowedTransitions, BigDecimal subtotal, BigDecimal total,
-        PricingModel pricingModel, Instant approvedAt, List<ItemResponse> items, List<ExtraResponse> extras,
-        ScheduleResponse schedule, List<StatusChangeResponse> statusHistory, List<DocumentResponse> documents,
-        DepositResponse deposit, ProposalDraft draft) {
+        PricingModel pricingModel, Instant approvedAt, Instant viewedAt, List<ItemResponse> items,
+        List<ExtraResponse> extras, ScheduleResponse schedule, List<StatusChangeResponse> statusHistory,
+        List<DocumentResponse> documents, DepositResponse deposit, ProposalDraft draft, boolean projectActive) {
 
     public static ProposalDetailResponse from(Detail detail) {
         Proposal proposal = detail.proposal();
+        // "Proyecto activado" (Spec 15): derived, never stored. The project is
+        // active only once its contract is ISSUED and a deposit payment exists.
+        boolean projectActive = detail.deposit() != null
+                && detail.deposit().getContract().getStatus() == ContractStatus.ISSUED;
         return new ProposalDetailResponse(proposal.getId(), proposal.getBrief().getId(), proposal.getStatus(),
                 proposal.getRevisionNumber(),
                 proposal.getRevisionOf() == null ? null : proposal.getRevisionOf().getId(),
                 proposal.getState().allowedTransitions(), proposal.getSubtotal(), proposal.getTotal(),
-                proposal.getPricingModel(), proposal.getApprovedAt(),
+                proposal.getPricingModel(), proposal.getApprovedAt(), proposal.getViewedAt(),
                 proposal.getItems().stream().map(ItemResponse::from).toList(),
                 proposal.getAppliedExtras().stream().map(ExtraResponse::from).toList(),
                 ScheduleResponse.from(proposal.getSchedulePlan()),
                 proposal.getStatusHistory().stream().map(StatusChangeResponse::from).toList(),
                 detail.documents().stream().map(DocumentResponse::from).toList(),
-                DepositResponse.from(detail.deposit()), draft(proposal));
+                DepositResponse.from(detail.deposit()), draft(proposal), projectActive);
     }
 
     private static ProposalDraft draft(Proposal proposal) {
@@ -75,13 +81,33 @@ public record ProposalDetailResponse(Long id, Long briefId, ProposalStatus statu
         }
     }
 
-    /** Recalculated capacity and phases. */
-    public record ScheduleResponse(BigDecimal hoursPerWeek, BigDecimal totalHours, List<PhaseResponse> phases) {
+    /** Recalculated capacity, phases and the derived delivery/launch milestones. */
+    public record ScheduleResponse(BigDecimal hoursPerWeek, BigDecimal totalHours, List<PhaseResponse> phases,
+            List<MilestoneResponse> milestones) {
 
+        /**
+         * Pure derivation of the schedule milestones (Spec 15): one "Entrega"
+         * per phase at that phase's end week, plus the final "Lanzamiento" at
+         * the last (latest) end week of the project. Nothing is persisted.
+         */
         public static ScheduleResponse from(Schedule schedule) {
-            return schedule == null ? null : new ScheduleResponse(schedule.getHoursPerWeek(), schedule.getTotalHours(),
-                    schedule.getPhases().stream().map(PhaseResponse::from).toList());
+            if (schedule == null) {
+                return null;
+            }
+            List<PhaseResponse> phases = schedule.getPhases().stream().map(PhaseResponse::from).toList();
+            List<MilestoneResponse> milestones = new ArrayList<>();
+            int lastEndWeek = 0;
+            for (Phase phase : schedule.getPhases()) {
+                milestones.add(new MilestoneResponse("Entrega: " + phase.getName(), phase.getEndWeek()));
+                lastEndWeek = Math.max(lastEndWeek, phase.getEndWeek());
+            }
+            milestones.add(new MilestoneResponse("Lanzamiento", lastEndWeek));
+            return new ScheduleResponse(schedule.getHoursPerWeek(), schedule.getTotalHours(), phases, milestones);
         }
+    }
+
+    /** One derived milestone in the project timeline. */
+    public record MilestoneResponse(String name, int week) {
     }
 
     /** One phase in the dependency-aware timeline. */

@@ -15,6 +15,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -71,6 +72,19 @@ public class ProposalController {
         return ProposalDetailResponse.from(proposals.adjustHours(user.agencyId(), id, itemId, request.hours()));
     }
 
+    @PostMapping("/{id}/extras")
+    @Operation(summary = "Apply a price extra (URGENCY, DISCOUNT or EXTENDED_WARRANTY)")
+    public ProposalDetailResponse addExtra(@PathVariable Long id, @Valid @RequestBody AddExtraRequest request,
+            CurrentUser user) {
+        return ProposalDetailResponse.from(proposals.addExtra(user.agencyId(), id, request.type()));
+    }
+
+    @DeleteMapping("/{id}/extras/{extraId}")
+    @Operation(summary = "Remove an applied price extra")
+    public ProposalDetailResponse removeExtra(@PathVariable Long id, @PathVariable Long extraId, CurrentUser user) {
+        return ProposalDetailResponse.from(proposals.removeExtra(user.agencyId(), id, extraId));
+    }
+
     @PostMapping("/{id}/approve")
     @Operation(summary = "Approve proposal")
     public ProposalDetailResponse approve(@PathVariable Long id, CurrentUser user) {
@@ -81,6 +95,12 @@ public class ProposalController {
     @Operation(summary = "Send proposal")
     public ProposalDetailResponse send(@PathVariable Long id, CurrentUser user) {
         return ProposalDetailResponse.from(proposals.send(user.agencyId(), id));
+    }
+
+    @PostMapping("/{id}/viewed")
+    @Operation(summary = "Mark a sent offer as viewed (tracked fact 'vista', no status change)")
+    public ProposalDetailResponse viewed(@PathVariable Long id, CurrentUser user) {
+        return ProposalDetailResponse.from(proposals.viewed(user.agencyId(), id));
     }
 
     @PostMapping("/{id}/negotiate")

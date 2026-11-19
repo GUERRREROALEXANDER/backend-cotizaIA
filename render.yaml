@@ -32,6 +32,45 @@ services:
       # Frontend URL, e.g. https://cotizaia-frontend.onrender.com (no trailing slash).
       - key: CORS_ALLOWED_ORIGINS
         sync: false
+      - key: LLM_CHAIN
+        value: gemini,groq
+      - key: GEMINI_MODEL
+        value: gemini-3.5-flash-lite
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-120b
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GMAIL_ENABLED
+        sync: false
+      - key: GMAIL_AGENCY_ID
+        sync: false
+      - key: GMAIL_REFRESH_TOKEN
+        sync: false
+      - key: GMAIL_CLIENT_ID
+        sync: false
+      - key: GMAIL_CLIENT_SECRET
+        sync: false
+      # Spec 16: email. Off by default; the dashboard holds the credentials (sync:false).
+      - key: MAIL_ENABLED
+        value: false
+      - key: MAIL_PORT
+        value: 587
+      - key: MAIL_STARTTLS
+        value: true
+      - key: MAIL_VERIFICATION_REQUIRED
+        value: false
+      - key: MAIL_SEND_TO_CLIENT
+        value: false
+      - key: MAIL_HOST
+        sync: false
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: APP_PUBLIC_URL
+        sync: false
 
   # The frontend is deployed on Vercel, not here: frontend-cotizaIA/vercel.json proxies /api/* to this service
   # (same origin for the SameSite=Strict session cookies) and sends the CSP and security headers.
