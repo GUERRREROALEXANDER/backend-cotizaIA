@@ -34,8 +34,10 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private static final AntPathMatcher MATCHER = new AntPathMatcher();
 
-    private static final Set<String> AUTH_PATHS =
-            Set.of("/api/auth/login", "/api/auth/register", "/api/auth/refresh");
+    private static final Set<String> AUTH_PATHS = Set.of("/api/auth/login", "/api/auth/register",
+            "/api/auth/refresh",
+            // Spec 16: the public verification endpoints share the credential bucket (per client IP).
+            "/api/auth/verify-email", "/api/auth/resend-verification");
 
     private static final List<Rule> AI_RULES = List.of(
             new Rule(HttpMethod.POST, "/api/quotations"),

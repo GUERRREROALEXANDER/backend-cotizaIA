@@ -87,6 +87,28 @@ public class AuthController {
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * Redeems the one-time link mailed at registration (spec 16). Public and CSRF-exempt like login:
+     * the caller has no session yet, and the token itself is the proof of identity.
+     */
+    @PostMapping("/verify-email")
+    @Operation(summary = "Verify an email address with the mailed one-time token")
+    public ResponseEntity<Void> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
+        authService.verifyEmail(request.token());
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Sends another link. Always 204, whether the address exists, is verified or is unknown, so the
+     * endpoint cannot be used to enumerate accounts (spec 16).
+     */
+    @PostMapping("/resend-verification")
+    @Operation(summary = "Send another verification link (always 204)")
+    public ResponseEntity<Void> resendVerification(@Valid @RequestBody ResendVerificationRequest request) {
+        authService.resendVerification(request.email());
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/me")
     @Operation(summary = "Get the authenticated identity")
     public MeResponse me(CurrentUser user) {

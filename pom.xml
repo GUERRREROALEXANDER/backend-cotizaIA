@@ -57,6 +57,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
+        <!-- Spec 16: SMTP adapter (SmtpEmailGateway). The app only opens an SMTP connection when mail.enabled=true. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>org.flywaydb</groupId>
@@ -116,6 +121,14 @@
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Spec 16: in-process SMTP server, so the mail contract is proven over a real SMTP conversation.
+             Not managed by Spring Boot's BOM, hence the explicit version. -->
+        <dependency>
+            <groupId>com.icegreen</groupId>
+            <artifactId>greenmail-junit5</artifactId>
+            <version>2.1.4</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
