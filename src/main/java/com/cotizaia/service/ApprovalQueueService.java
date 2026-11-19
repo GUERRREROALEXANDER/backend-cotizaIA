@@ -18,10 +18,13 @@ import com.cotizaia.domain.ExtendedWarrantyDecorator;
 import com.cotizaia.domain.PricedProposal;
 import com.cotizaia.domain.ProposalPriceDecorator;
 import com.cotizaia.domain.UrgencyDecorator;
+import com.cotizaia.config.CurrentActor;
+import com.cotizaia.mail.ProposalDocumentEmailEvent;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.NoSuchElementException;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,14 +50,20 @@ public class ApprovalQueueService {
 
     private final CommandHistory commandHistory;
 
+    private final ApplicationEventPublisher events;
+
+    private final CurrentActor actor;
+
     public ApprovalQueueService(ProposalRepository proposals, DocumentService documents,
             ProposalWorkflowService workflow, ProposalAcceptanceService acceptance,
-            CommandHistory commandHistory) {
+            CommandHistory commandHistory, ApplicationEventPublisher events, CurrentActor actor) {
         this.proposals = proposals;
         this.documents = documents;
         this.workflow = workflow;
         this.acceptance = acceptance;
         this.commandHistory = commandHistory;
+        this.events = events;
+        this.actor = actor;
     }
 
     @Transactional(readOnly = true)
@@ -179,12 +188,19 @@ public class ApprovalQueueService {
         return proposal;
     }
 
+    /**
+     * Sends an approved proposal and asks for its PDF to be mailed to the person who sent it
+     * (spec 16). The event is published inside this transaction and delivered to the Observer
+     * only after the commit, so a mail failure can never undo the send.
+     */
     public Proposal send(Long agencyId, Long proposalId) {
         Proposal proposal = get(agencyId, proposalId);
         if (!proposal.isApproved()) {
             throw new IllegalStateException("Proposal must be approved before sending");
         }
-        return workflow.transition(proposalId, ProposalEvent.SEND);
+        Proposal sent = workflow.transition(proposalId, ProposalEvent.SEND);
+        events.publishEvent(ProposalDocumentEmailEvent.sent(proposalId, actor.userId().orElse(null)));
+        return sent;
     }
 
     public Proposal negotiate(Long agencyId, Long proposalId) {

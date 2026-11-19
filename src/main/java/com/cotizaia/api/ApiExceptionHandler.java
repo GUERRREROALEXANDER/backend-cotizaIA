@@ -4,6 +4,8 @@ import com.cotizaia.agent.PipelineRunRecorder.PipelineFailedException;
 import com.cotizaia.domain.state.InvalidStateTransitionException;
 import com.cotizaia.ingest.UnsupportedChannelException;
 import com.cotizaia.ingest.UploadTooLargeException;
+import com.cotizaia.mail.EmailNotVerifiedException;
+import com.cotizaia.mail.InvalidVerificationTokenException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -45,6 +47,20 @@ public class ApiExceptionHandler {
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     public Map<String, String> badCredentials(BadCredentialsException exception) {
         return Map.of("error", exception.getMessage());
+    }
+
+    /** Spec 16: a correct password on an unverified account is not a credential failure. */
+    @ExceptionHandler(EmailNotVerifiedException.class)
+    @ResponseStatus(HttpStatus.FORBIDDEN)
+    public Map<String, String> emailNotVerified(EmailNotVerifiedException exception) {
+        return Map.of("error", "Email not verified");
+    }
+
+    /** Spec 16: unknown, expired and already used links look the same to the caller. */
+    @ExceptionHandler(InvalidVerificationTokenException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public Map<String, String> invalidVerificationToken(InvalidVerificationTokenException exception) {
+        return Map.of("error", "Invalid or expired token");
     }
 
     @ExceptionHandler({IllegalStateException.class, DataIntegrityViolationException.class})
