@@ -1,0 +1,24 @@
+# Render's free plan stops the service after 15 minutes without traffic, and the
+# next request waits ~1 min for a cold start. Pinging the health check every 10
+# minutes keeps it warm. This is the only free service in the workspace, so 24/7
+# (~744 h) fits inside the 750 free instance hours a month.
+# Note: GitHub may delay scheduled runs, and disables them after 60 days with no
+# repository activity (re-enable from the Actions tab).
+name: keep-alive
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping the Render health check
+        run: |
+          # --retry covers a cold start that is still booting when the first try lands.
+          curl --fail --silent --show-error --max-time 90 \
+            --retry 3 --retry-delay 20 --retry-all-errors \
+            https://backend-cotizaia.onrender.com/actuator/health
