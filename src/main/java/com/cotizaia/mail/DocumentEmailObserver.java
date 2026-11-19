@@ -11,6 +11,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import org.slf4j.Logger;
@@ -118,27 +119,42 @@ public class DocumentEmailObserver {
         return new ArrayList<>(addresses);
     }
 
+    /** Subject and body per document type, kept as a lookup table so type selection stays out of branches. */
+    private record Template(String subject, BodyWriter body) {
+    }
+
+    @FunctionalInterface
+    private interface BodyWriter {
+        String write(ProposalDocumentEmailEvent event, Proposal proposal, String client, String total);
+    }
+
+    private static final Template PROPOSAL_TEMPLATE = new Template("Propuesta enviada: PDF adjunto",
+            (event, proposal, client, total) -> "Hola:\n\nAdjuntamos el PDF de la propuesta " + proposal.getId()
+                    + " que acabas de enviar al cliente " + client + ".\n\n"
+                    + "Valor total: " + total + "\n\n"
+                    + "Este es el documento que recibió el cliente.");
+
+    private static final Map<DocumentType, Template> TEMPLATES = Map.of(
+            DocumentType.PROPOSAL, PROPOSAL_TEMPLATE,
+            DocumentType.CONTRACT, new Template("Contrato emitido: PDF adjunto",
+                    (event, proposal, client, total) -> "Hola:\n\nEl cliente " + client + " aceptó la propuesta "
+                            + proposal.getId() + ". Adjuntamos el contrato emitido en PDF.\n\n"
+                            + "Depósito: " + money(event.depositAmount()) + "\n"
+                            + "Referencia del pago: " + event.paymentReference() + "\n"
+                            + "Valor total de la propuesta: " + total + "\n\n"
+                            + "El depósito es simulado: no se movió dinero real."));
+
+    private static Template template(ProposalDocumentEmailEvent event) {
+        return TEMPLATES.getOrDefault(event.documentType(), PROPOSAL_TEMPLATE);
+    }
+
     private static String subject(ProposalDocumentEmailEvent event) {
-        return event.documentType() == DocumentType.CONTRACT
-                ? "Contrato emitido: PDF adjunto"
-                : "Propuesta enviada: PDF adjunto";
+        return template(event).subject();
     }
 
     private static String text(ProposalDocumentEmailEvent event, Proposal proposal) {
-        String client = proposal.getBrief().getClient().getName();
-        String total = money(proposal.getTotal());
-        if (event.documentType() == DocumentType.CONTRACT) {
-            return "Hola:\n\nEl cliente " + client + " aceptó la propuesta " + proposal.getId()
-                    + ". Adjuntamos el contrato emitido en PDF.\n\n"
-                    + "Depósito: " + money(event.depositAmount()) + "\n"
-                    + "Referencia del pago: " + event.paymentReference() + "\n"
-                    + "Valor total de la propuesta: " + total + "\n\n"
-                    + "El depósito es simulado: no se movió dinero real.";
-        }
-        return "Hola:\n\nAdjuntamos el PDF de la propuesta " + proposal.getId() + " que acabas de enviar al "
-                + "cliente " + client + ".\n\n"
-                + "Valor total: " + total + "\n\n"
-                + "Este es el documento que recibió el cliente.";
+        return template(event).body().write(event, proposal, proposal.getBrief().getClient().getName(),
+                money(proposal.getTotal()));
     }
 
     private static String money(BigDecimal amount) {
