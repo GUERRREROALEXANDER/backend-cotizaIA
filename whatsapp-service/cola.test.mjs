@@ -2,7 +2,7 @@
 // Uso: npm test
 import assert from 'node:assert/strict'
 import { afterEach, test } from 'node:test'
-import { NumeroSinWhatsapp, pedirRespuesta, procesarCola, telefonoDe, textoEntrante } from './cola.mjs'
+import { NumeroSinWhatsapp, enviarDocumentos, pedirRespuesta, procesarCola, telefonoDe, textoEntrante } from './cola.mjs'
 
 const fetchReal = globalThis.fetch
 afterEach(() => { globalThis.fetch = fetchReal })
@@ -72,7 +72,8 @@ test('el bot pide la respuesta al backend con el remitente y el texto', async ()
 
   const respuesta = await pedirRespuesta({ ...comun, de: '573001234567@s.whatsapp.net', texto: 'pagina web' })
 
-  assert.deepEqual(respuesta, { texto: 'Entre $3.000.000 y $4.000.000', sticker: 'cotizar' })
+  // Un backend sin PDFs (o anterior a ellos) deja la lista vacia.
+  assert.deepEqual(respuesta, { texto: 'Entre $3.000.000 y $4.000.000', sticker: 'cotizar', documentos: [] })
   assert.equal(llamadas[0].url, 'http://localhost:8080/api/whatsapp/bot/reply')
   assert.deepEqual(llamadas[0].body, { from: '573001234567@s.whatsapp.net', text: 'pagina web' })
 })
@@ -131,4 +132,53 @@ test('cada sticker existe como WebP y un nombre desconocido no lee archivos', as
   }
   assert.equal(await sticker('../package'), null)
   assert.equal(await sticker('otro'), null)
+})
+const PROPUESTA = { proposalId: 15, type: 'PROPOSAL', fileName: 'propuesta-15.pdf' }
+const CRONOGRAMA = { proposalId: 15, type: 'SCHEDULE', fileName: 'cronograma-15.pdf' }
+
+test('la respuesta trae los PDFs que el backend adjunta', async () => {
+  globalThis.fetch = async () => ({
+    ok: true, status: 200, json: async () => ({ reply: 'Listo', sticker: 'listo', documents: [PROPUESTA, CRONOGRAMA] }),
+  })
+
+  const respuesta = await pedirRespuesta({ ...comun, de: 'x', telefono: '573010944197', texto: 'restaurante' })
+
+  assert.deepEqual(respuesta.documentos, [PROPUESTA, CRONOGRAMA])
+})
+
+test('cada PDF se descarga con el numero de quien pidio y se envia con su nombre', async () => {
+  const llamadas = []
+  globalThis.fetch = async (url, opciones) => {
+    llamadas.push({ url, headers: opciones.headers, body: JSON.parse(opciones.body) })
+    const pdf = new TextEncoder().encode(`%PDF-${JSON.parse(opciones.body).type}`)
+    return { ok: true, status: 200, arrayBuffer: async () => pdf.buffer }
+  }
+  const enviados = []
+
+  const total = await enviarDocumentos({
+    ...comun, telefono: '573010944197', documentos: [PROPUESTA, CRONOGRAMA],
+    enviar: async (contenido, nombre) => enviados.push({ texto: contenido.toString(), nombre }),
+  })
+
+  assert.equal(total, 2)
+  assert.deepEqual(enviados, [
+    { texto: '%PDF-PROPOSAL', nombre: 'propuesta-15.pdf' },
+    { texto: '%PDF-SCHEDULE', nombre: 'cronograma-15.pdf' },
+  ])
+  assert.equal(llamadas[0].url, 'http://localhost:8080/api/whatsapp/bot/document')
+  assert.equal(llamadas[0].headers['X-API-Key'], 'clave')
+  assert.deepEqual(llamadas[0].body, { phone: '573010944197', proposalId: 15, type: 'PROPOSAL' })
+})
+
+test('un PDF que falla no impide enviar el siguiente, y sin numero no se pide nada', async () => {
+  globalThis.fetch = async (url, opciones) => {
+    if (JSON.parse(opciones.body).type === 'PROPOSAL') return { ok: false, status: 404 }
+    return { ok: true, status: 200, arrayBuffer: async () => new TextEncoder().encode('%PDF-').buffer }
+  }
+  const nombres = []
+  const enviar = async (contenido, nombre) => nombres.push(nombre)
+
+  assert.equal(await enviarDocumentos({ ...comun, telefono: '573010944197', documentos: [PROPUESTA, CRONOGRAMA], enviar }), 1)
+  assert.deepEqual(nombres, ['cronograma-15.pdf'])
+  assert.equal(await enviarDocumentos({ ...comun, telefono: null, documentos: [PROPUESTA], enviar }), 0)
 })

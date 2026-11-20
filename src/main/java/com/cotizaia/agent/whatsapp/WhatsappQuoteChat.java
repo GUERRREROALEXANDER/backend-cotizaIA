@@ -20,10 +20,12 @@ import java.text.Normalizer;
 import java.text.NumberFormat;
 import java.time.Clock;
 import java.util.Locale;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +43,7 @@ public class WhatsappQuoteChat {
 
     static final int MIN_DESCRIPTION = 15;
     private static final String DONE = "✅ Cotización #";
+    private static final Pattern DONE_ID = Pattern.compile(Pattern.quote(DONE) + "(\\d+)");
     private static final String QUESTION_INTRO = "Para cotizar bien necesito un dato más:";
     static final int MAX_NAME = 120;
     private static final Pattern EMAIL = Pattern.compile("[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}");
@@ -85,10 +88,16 @@ public class WhatsappQuoteChat {
             Step before = session.stepAt(clock.instant());
             String reply = advance(user, session, text.trim());
             sessions.save(session);
-            return new BotReply(reply, sticker(before, session.getStep(), reply));
+            return new BotReply(reply, sticker(before, session.getStep(), reply), documents(reply));
         } finally {
             busy.remove(userId);
         }
+    }
+
+    /** A finished quotation sends its PDFs after the text; DONE replies always start with the proposal id. */
+    private static List<BotReply.Document> documents(String reply) {
+        Matcher done = DONE_ID.matcher(reply);
+        return done.lookingAt() ? BotReply.Document.forQuote(Long.parseLong(done.group(1))) : List.of();
     }
 
     /** The robot greets on the menu, holds a quote when one starts, thinks on a question and cheers when done. */

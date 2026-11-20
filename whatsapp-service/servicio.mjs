@@ -5,7 +5,7 @@
 // Uso: npm start (necesita un archivo .env; mira .env.example).
 import makeWASocket, { DisconnectReason, fetchLatestBaileysVersion, useMultiFileAuthState } from '@whiskeysockets/baileys'
 import pino from 'pino'
-import { NumeroSinWhatsapp, pedirRespuesta, procesarCola, telefonoDe, textoEntrante } from './cola.mjs'
+import { NumeroSinWhatsapp, enviarDocumentos, pedirRespuesta, procesarCola, telefonoDe, textoEntrante } from './cola.mjs'
 import { sticker } from './stickers.mjs'
 
 const backendUrl = process.env.BACKEND_URL
@@ -46,14 +46,21 @@ function conectar() {
       try {
         // "Escribiendo..." mientras el backend responde: una cotizacion con la IA puede tardar.
         await socket.sendPresenceUpdate('composing', jid).catch(() => {})
-        const respuesta = await pedirRespuesta({ backendUrl, apiKey, de: jid, telefono: telefonoDe(mensaje), texto })
+        const telefono = telefonoDe(mensaje)
+        const respuesta = await pedirRespuesta({ backendUrl, apiKey, de: jid, telefono, texto })
         await socket.sendPresenceUpdate('paused', jid).catch(() => {})
         if (respuesta) {
           // Primero el robot (si hay sticker para este momento), luego el texto.
           const imagen = respuesta.sticker ? await sticker(respuesta.sticker) : null
           if (imagen) await socket.sendMessage(jid, { sticker: imagen }).catch(() => {})
           await socket.sendMessage(jid, { text: respuesta.texto })
-          console.log('Respuesta enviada.')
+          // Despues del texto, los PDFs de una cotizacion terminada (propuesta y cronograma).
+          const pdfs = await enviarDocumentos({
+            backendUrl, apiKey, telefono, documentos: respuesta.documentos,
+            enviar: (contenido, nombre) =>
+              socket.sendMessage(jid, { document: contenido, mimetype: 'application/pdf', fileName: nombre }),
+          })
+          console.log(pdfs ? `Respuesta enviada con ${pdfs} PDF.` : 'Respuesta enviada.')
         }
       } catch (error) {
         console.error(`No se pudo responder un mensaje: ${error.message}`)
