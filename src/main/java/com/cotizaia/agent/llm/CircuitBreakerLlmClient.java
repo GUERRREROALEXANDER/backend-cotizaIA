@@ -14,8 +14,8 @@ import org.slf4j.LoggerFactory;
  *   <li>CLOSED: calls pass through; consecutive {@link LlmException}s are counted.</li>
  *   <li>OPEN: after {@code failureThreshold} consecutive failures the provider is skipped for {@code openDuration}:
  *       calls fail at once with a non-retryable {@link LlmException}, so {@link FallbackLlmClient} moves to the next provider without waiting on backoff.</li>
- *   <li>HALF_OPEN: once the open window ends, a single trial call is let through; success closes the circuit,
- *       failure opens it again for another window.</li>
+ *   <li>HALF_OPEN: once the open window ends, a single trial call is let through; only that trial settles the circuit:
+ *       success closes it, failure opens it again. Late results from calls admitted earlier are ignored.</li>
  * </ul>
  *
  * Only a retryable {@link LlmException} counts as a provider failure. The breaker wraps the provider's
@@ -50,21 +50,21 @@ public class CircuitBreakerLlmClient implements LlmClient {
 
     @Override
     public LlmResponse complete(LlmRequest request) {
-        admit();
+        boolean trial = admit();
         boolean settled = false;
         try {
             LlmResponse response = delegate.complete(request);
-            onSuccess();
+            onSuccess(trial);
             settled = true;
             return response;
         } catch (LlmException failure) {
             if (failure.isRetryable()) {
-                onFailure();
+                onFailure(trial);
                 settled = true;
             }
             throw failure;
         } finally {
-            if (!settled) {
+            if (trial && !settled) {
                 // A client fault (non-retryable) or a bug says nothing about provider health: free the trial slot.
                 releaseTrial();
             }
@@ -72,7 +72,7 @@ public class CircuitBreakerLlmClient implements LlmClient {
     }
 
     /** Decides whether this call may reach the provider, moving OPEN to HALF_OPEN when the window has passed. */
-    private synchronized void admit() {
+    private synchronized boolean admit() {
         if (state == State.OPEN) {
             Instant reopensAt = openedAt.plus(openDuration);
             if (clock.instant().isBefore(reopensAt)) {
@@ -88,11 +88,13 @@ public class CircuitBreakerLlmClient implements LlmClient {
                         + "; a trial call is already in flight", false);
             }
             trialInFlight = true;
+            return true;
         }
+        return false;
     }
 
-    private synchronized void onSuccess() {
-        if (state == State.OPEN) {
+    private synchronized void onSuccess(boolean trial) {
+        if (state == State.OPEN || (state == State.HALF_OPEN && !trial)) {
             // A call admitted before the circuit opened finished late; it must not close a circuit it did not test.
             return;
         }
@@ -104,8 +106,13 @@ public class CircuitBreakerLlmClient implements LlmClient {
         trialInFlight = false;
     }
 
-    private synchronized void onFailure() {
-        trialInFlight = false;
+    private synchronized void onFailure(boolean trial) {
+        if (state == State.HALF_OPEN && !trial) {
+            return;
+        }
+        if (trial) {
+            trialInFlight = false;
+        }
         consecutiveFailures++;
         if (state == State.HALF_OPEN || consecutiveFailures >= failureThreshold) {
             state = State.OPEN;

@@ -10,6 +10,10 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
 /** The defining property of a Circuit Breaker: after repeated failures it stops calling the provider for a while. */
@@ -186,6 +190,124 @@ class CircuitBreakerLlmClientTests {
 
         assertThat(holder[0].state()).as("the nested failure opened it; the late success must not close it")
                 .isEqualTo(CircuitBreakerLlmClient.State.OPEN);
+    }
+
+    @Test
+    void aLateSuccessAfterAnAbortedTrialDoesNotCloseTheCircuit() {
+        Flaky provider = new Flaky("gemini").failing();
+        CircuitBreakerLlmClient[] holder = new CircuitBreakerLlmClient[1];
+        LlmClient client = new LlmClient() {
+            private int calls;
+
+            @Override
+            public LlmResponse complete(LlmRequest request) {
+                if (++calls == 1) {
+                    assertThatThrownBy(() -> holder[0].complete(request)).isInstanceOf(LlmException.class);
+                    clock.advance(Duration.ofSeconds(61));
+                    assertThatThrownBy(() -> holder[0].complete(request))
+                            .isInstanceOf(LlmException.class)
+                            .satisfies(error -> assertThat(((LlmException) error).isRetryable()).isFalse());
+                    return provider.healthy().complete(request);
+                }
+                if (calls == 3) {
+                    throw new LlmException("HTTP 400 bad request", false);
+                }
+                return provider.complete(request);
+            }
+
+            @Override
+            public String provider() {
+                return "gemini";
+            }
+        };
+        holder[0] = new CircuitBreakerLlmClient(client, 1, Duration.ofSeconds(60), clock);
+
+        holder[0].complete(request);
+
+        assertThat(holder[0].state()).isEqualTo(CircuitBreakerLlmClient.State.HALF_OPEN);
+    }
+
+    @Test
+    void aLateFailureDuringTheTrialDoesNotFreeTheTrialSlot() throws InterruptedException {
+        Flaky provider = new Flaky("gemini").failing();
+        CountDownLatch lateEntered = new CountDownLatch(1);
+        CountDownLatch releaseLate = new CountDownLatch(1);
+        CountDownLatch trialEntered = new CountDownLatch(1);
+        CountDownLatch releaseTrial = new CountDownLatch(1);
+        AtomicInteger calls = new AtomicInteger();
+        AtomicReference<Throwable> lateFailure = new AtomicReference<>();
+        AtomicReference<Throwable> trialFailure = new AtomicReference<>();
+        LlmClient client = new LlmClient() {
+            @Override
+            public LlmResponse complete(LlmRequest request) {
+                int call = calls.incrementAndGet();
+                try {
+                    if (call == 1) {
+                        lateEntered.countDown();
+                        assertThat(releaseLate.await(5, TimeUnit.SECONDS)).isTrue();
+                        throw new LlmException("late HTTP 503", true);
+                    }
+                    if (call == 3) {
+                        trialEntered.countDown();
+                        assertThat(releaseTrial.await(5, TimeUnit.SECONDS)).isTrue();
+                    }
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    throw new AssertionError(interrupted);
+                }
+                return provider.complete(request);
+            }
+
+            @Override
+            public String provider() {
+                return "gemini";
+            }
+        };
+        CircuitBreakerLlmClient breaker = new CircuitBreakerLlmClient(client, 1, Duration.ofSeconds(60), clock);
+        Thread late = new Thread(() -> {
+            try {
+                assertThatThrownBy(() -> breaker.complete(request))
+                        .isInstanceOf(LlmException.class).hasMessageContaining("late HTTP 503");
+            } catch (Throwable failure) {
+                lateFailure.set(failure);
+            }
+        });
+        Thread trial = new Thread(() -> {
+            try {
+                assertThat(breaker.complete(request).provider()).isEqualTo("gemini");
+            } catch (Throwable failure) {
+                trialFailure.set(failure);
+            }
+        });
+
+        late.start();
+        try {
+            assertThat(lateEntered.await(5, TimeUnit.SECONDS)).isTrue();
+            assertThatThrownBy(() -> breaker.complete(request)).isInstanceOf(LlmException.class);
+            clock.advance(Duration.ofSeconds(61));
+            provider.healthy();
+            trial.start();
+            assertThat(trialEntered.await(5, TimeUnit.SECONDS)).isTrue();
+
+            releaseLate.countDown();
+            late.join(5000);
+            assertThat(late.isAlive()).isFalse();
+            assertThat(lateFailure.get()).isNull();
+            assertThat(breaker.state()).isEqualTo(CircuitBreakerLlmClient.State.HALF_OPEN);
+            assertThatThrownBy(() -> breaker.complete(request))
+                    .isInstanceOf(LlmException.class).hasMessageContaining("already in flight");
+
+            releaseTrial.countDown();
+            trial.join(5000);
+            assertThat(trial.isAlive()).isFalse();
+            assertThat(trialFailure.get()).isNull();
+            assertThat(breaker.state()).isEqualTo(CircuitBreakerLlmClient.State.CLOSED);
+        } finally {
+            releaseLate.countDown();
+            releaseTrial.countDown();
+            late.join(5000);
+            trial.join(5000);
+        }
     }
 
     @Test
