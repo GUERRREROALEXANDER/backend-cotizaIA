@@ -23,13 +23,14 @@ async function pedir(url, apiKey, body, esperaMs = ESPERA_MS) {
   return respuesta
 }
 
-// Pregunta al backend que contestar a un mensaje recibido. Devuelve el texto, o null si el bot no debe responder.
+// Pregunta al backend que contestar a un mensaje recibido. Devuelve { texto, sticker } (sticker puede ser null),
+// o null si el bot no debe responder.
 // "telefono" es el numero real de quien escribe: con el, el backend reconoce a un usuario que verifico su numero.
 export async function pedirRespuesta({ backendUrl, apiKey, de, telefono, texto }) {
   const url = `${backendUrl.replace(/\/+$/, '')}/api/whatsapp/bot/reply`
   const cuerpo = { from: de, text: texto.slice(0, 2000), ...(telefono ? { phone: telefono } : {}) }
-  const { reply } = await (await pedir(url, apiKey, cuerpo, ESPERA_RESPUESTA_MS)).json()
-  return reply ?? null
+  const { reply, sticker } = await (await pedir(url, apiKey, cuerpo, ESPERA_RESPUESTA_MS)).json()
+  return reply ? { texto: reply, sticker: sticker ?? null } : null
 }
 
 // El numero de quien escribe (solo digitos, con indicativo) o null. WhatsApp a veces identifica el chat con un

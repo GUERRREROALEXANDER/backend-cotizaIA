@@ -90,6 +90,23 @@ class WhatsappQuoteChatApiTests {
     }
 
     @Test
+    void theRobotStickerMatchesEachMoment() throws Exception {
+        Agency agency = setUpAgency();
+        String phone = verifiedPhone(agency.token());
+
+        assertThat(sticker(phone, "hola")).isEqualTo("saludo");
+        assertThat(sticker(phone, "cotizar")).isEqualTo("cotizar");
+        assertThat(sticker(phone, "Cliente Sticker")).isNull();
+        assertThat(sticker(phone, "no")).isNull();
+        assertThat(sticker(phone, "hola, necesito ayuda con algo")).isEqualTo("pensando");
+        String last = null;
+        for (int round = 0; round < 4 && !"listo".equals(last); round++) {
+            last = sticker(phone, "Una pagina web con menu digital y sistema de reservas");
+        }
+        assertThat(last).isEqualTo("listo");
+        assertThat(sticker(randomPhone(), "Buenas tardes")).isEqualTo("saludo");
+    }
+    @Test
     void cancellingGoesBackToTheStart() throws Exception {
         Agency agency = setUpAgency();
         String phone = verifiedPhone(agency.token());
@@ -148,6 +165,15 @@ class WhatsappQuoteChatApiTests {
         return reply;
     }
 
+    private String sticker(String phone, String text) throws Exception {
+        String body = "{\"from\":\"" + phone.substring(1) + "@s.whatsapp.net\",\"phone\":\"" + phone.substring(1)
+                + "\",\"text\":" + quote(text) + "}";
+        MvcResult result = mockMvc.perform(post("/api/whatsapp/bot/reply").header("X-API-Key", KEY)
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk())
+                .andReturn();
+        return JsonPath.read(result.getResponse().getContentAsString(), "$.sticker");
+    }
     private String verifiedPhone(String token) throws Exception {
         String phone = randomPhone();
         verify(token, phone);

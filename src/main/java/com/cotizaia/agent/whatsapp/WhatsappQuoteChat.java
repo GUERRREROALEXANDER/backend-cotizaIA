@@ -40,6 +40,8 @@ import org.slf4j.LoggerFactory;
 public class WhatsappQuoteChat {
 
     static final int MIN_DESCRIPTION = 15;
+    private static final String DONE = "✅ Cotización #";
+    private static final String QUESTION_INTRO = "Para cotizar bien necesito un dato más:";
     static final int MAX_NAME = 120;
     private static final Pattern EMAIL = Pattern.compile("[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}");
     private static final Set<String> START = Set.of("cotizar", "cotizacion", "nueva cotizacion", "nueva", "cotiza");
@@ -72,20 +74,38 @@ public class WhatsappQuoteChat {
     }
 
     /** The reply to a message from this agency user. */
-    public String reply(AppUser user, String text) {
+    public BotReply reply(AppUser user, String text) {
         Long userId = user.getId();
         if (!busy.add(userId)) {
-            return "Sigo trabajando en su cotización. En cuanto termine le escribo el resultado.";
+            return BotReply.text("Sigo trabajando en su cotización. En cuanto termine le escribo el resultado.");
         }
         try {
             WhatsappQuoteSession session = sessions.findById(userId)
                     .orElseGet(() -> new WhatsappQuoteSession(userId, clock.instant()));
+            Step before = session.stepAt(clock.instant());
             String reply = advance(user, session, text.trim());
             sessions.save(session);
-            return reply;
+            return new BotReply(reply, sticker(before, session.getStep(), reply));
         } finally {
             busy.remove(userId);
         }
+    }
+
+    /** The robot greets on the menu, holds a quote when one starts, thinks on a question and cheers when done. */
+    private static BotReply.Sticker sticker(Step before, Step after, String reply) {
+        if (reply.startsWith(DONE)) {
+            return BotReply.Sticker.LISTO;
+        }
+        if (after == Step.QUESTION && reply.startsWith(QUESTION_INTRO)) {
+            return BotReply.Sticker.PENSANDO;
+        }
+        if (before == Step.IDLE && after == Step.CLIENT_NAME) {
+            return BotReply.Sticker.COTIZAR;
+        }
+        if (before == Step.IDLE && after == Step.IDLE && reply.startsWith("Hola")) {
+            return BotReply.Sticker.SALUDO;
+        }
+        return null;
     }
 
     private String advance(AppUser user, WhatsappQuoteSession session, String text) {
@@ -173,7 +193,7 @@ public class WhatsappQuoteChat {
                 .filter(open -> open.blocking() && open.status() == QuestionStatus.OPEN).findFirst();
         if (result.halted() && question.isPresent()) {
             session.askQuestion(result.briefId(), question.get().id(), clock.instant());
-            return "Para cotizar bien necesito un dato más:\n" + question.get().question();
+            return QUESTION_INTRO + "\n" + question.get().question();
         }
         // Read before reset(): it clears the client name.
         String client = clientLabel(session, result);
@@ -182,7 +202,7 @@ public class WhatsappQuoteChat {
             return "La cotización #" + result.proposalId() + " para " + client + " quedó pendiente: termínela en "
                     + "CotizaIA" + link("/#/propuestas") + ".";
         }
-        return "✅ Cotización #" + result.proposalId() + " para " + client + "\n"
+        return DONE + result.proposalId() + " para " + client + "\n"
                 + "Total: " + money(result.total()) + "\n"
                 + "Estado: " + status(result.proposalStatus()) + "\n"
                 + "Revísela y apruébela antes de enviarla al cliente" + link("/#/propuestas") + "\n\n"

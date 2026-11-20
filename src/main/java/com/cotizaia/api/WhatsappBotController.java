@@ -1,5 +1,6 @@
 package com.cotizaia.api;
 
+import com.cotizaia.agent.whatsapp.BotReply;
 import com.cotizaia.agent.whatsapp.WhatsappInbox;
 import com.cotizaia.service.whatsapp.WhatsappServiceKey;
 import io.swagger.v3.oas.annotations.Operation;
@@ -44,7 +45,8 @@ public class WhatsappBotController {
             @NotBlank @Size(max = 2000) String text) {
     }
 
-    public record Reply(String reply) {
+    /** {@code sticker} names a robot sticker the service sends before the text (saludo, pensando, listo, cotizar). */
+    public record Reply(String reply, String sticker) {
     }
 
     @PostMapping("/reply")
@@ -52,7 +54,9 @@ public class WhatsappBotController {
     public Reply reply(@Parameter(hidden = true) @RequestHeader(value = "X-API-Key", required = false) String key,
             @Valid @RequestBody IncomingMessage message) {
         serviceKey.require(key);
-        return new Reply(inbox.reply(message.from(), message.phone(), message.text().trim()).orElse(null));
+        return inbox.reply(message.from(), message.phone(), message.text().trim())
+                .map(answer -> new Reply(answer.text(), answer.sticker() == null ? null : answer.sticker().fileName()))
+                .orElse(new Reply(null, null));
     }
 
     @ExceptionHandler(WhatsappServiceKey.RefusedException.class)

@@ -6,6 +6,7 @@
 import makeWASocket, { DisconnectReason, fetchLatestBaileysVersion, useMultiFileAuthState } from '@whiskeysockets/baileys'
 import pino from 'pino'
 import { NumeroSinWhatsapp, pedirRespuesta, procesarCola, telefonoDe, textoEntrante } from './cola.mjs'
+import { sticker } from './stickers.mjs'
 
 const backendUrl = process.env.BACKEND_URL
 const apiKey = process.env.WHATSAPP_SERVICE_KEY
@@ -48,7 +49,10 @@ function conectar() {
         const respuesta = await pedirRespuesta({ backendUrl, apiKey, de: jid, telefono: telefonoDe(mensaje), texto })
         await socket.sendPresenceUpdate('paused', jid).catch(() => {})
         if (respuesta) {
-          await socket.sendMessage(jid, { text: respuesta })
+          // Primero el robot (si hay sticker para este momento), luego el texto.
+          const imagen = respuesta.sticker ? await sticker(respuesta.sticker) : null
+          if (imagen) await socket.sendMessage(jid, { sticker: imagen }).catch(() => {})
+          await socket.sendMessage(jid, { text: respuesta.texto })
           console.log('Respuesta enviada.')
         }
       } catch (error) {

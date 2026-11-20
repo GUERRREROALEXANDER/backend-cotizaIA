@@ -67,12 +67,12 @@ test('el bot pide la respuesta al backend con el remitente y el texto', async ()
   const llamadas = []
   globalThis.fetch = async (url, opciones) => {
     llamadas.push({ url, body: JSON.parse(opciones.body) })
-    return { ok: true, status: 200, json: async () => ({ reply: 'Entre $3.000.000 y $4.000.000' }) }
+    return { ok: true, status: 200, json: async () => ({ reply: 'Entre $3.000.000 y $4.000.000', sticker: 'cotizar' }) }
   }
 
   const respuesta = await pedirRespuesta({ ...comun, de: '573001234567@s.whatsapp.net', texto: 'pagina web' })
 
-  assert.equal(respuesta, 'Entre $3.000.000 y $4.000.000')
+  assert.deepEqual(respuesta, { texto: 'Entre $3.000.000 y $4.000.000', sticker: 'cotizar' })
   assert.equal(llamadas[0].url, 'http://localhost:8080/api/whatsapp/bot/reply')
   assert.deepEqual(llamadas[0].body, { from: '573001234567@s.whatsapp.net', text: 'pagina web' })
 })
@@ -119,4 +119,16 @@ test('el numero sale del chat o de su alias cuando WhatsApp usa @lid', () => {
   assert.equal(telefonoDe(de({ remoteJid: '98765@lid' })), null)
   assert.equal(telefonoDe(de({ remoteJid: '123-456@g.us' })), null)
   assert.equal(telefonoDe({}), null)
+})
+test('cada sticker existe como WebP y un nombre desconocido no lee archivos', async () => {
+  const { STICKERS, sticker } = await import('./stickers.mjs')
+  for (const nombre of STICKERS) {
+    const imagen = await sticker(nombre)
+    assert.ok(imagen, `falta stickers/${nombre}.webp`)
+    assert.equal(imagen.subarray(0, 4).toString(), 'RIFF')
+    assert.equal(imagen.subarray(8, 12).toString(), 'WEBP')
+    assert.ok(imagen.length < 100 * 1024, `${nombre} supera 100 KB`)
+  }
+  assert.equal(await sticker('../package'), null)
+  assert.equal(await sticker('otro'), null)
 })
