@@ -98,6 +98,8 @@ class ApiErrorContractTests {
                 .andReturn().getResponse().getContentAsString();
         JsonNode paths = mapper.readTree(body).path("paths");
         assertThat(paths.path("/api/auth/me").path("get").path("parameters").isMissingNode()).isTrue();
+        assertThat(paths.path("/api/auth/csrf").path("get").path("parameters").isMissingNode())
+                .as("the injected CsrfToken is not a request parameter").isTrue();
         List<String> leaked = new ArrayList<>();
         paths.fields().forEachRemaining(path -> path.getValue().fields().forEachRemaining(operation ->
                 operation.getValue().path("parameters").forEach(parameter -> {
