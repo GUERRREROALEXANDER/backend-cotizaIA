@@ -15,6 +15,15 @@ public class LlmProperties {
     private String chain = "";
     private Timeout timeout = new Timeout();
     private Retry retry = new Retry();
+    private CircuitBreaker circuitBreaker = new CircuitBreaker();
+
+    public CircuitBreaker getCircuitBreaker() {
+        return circuitBreaker;
+    }
+
+    public void setCircuitBreaker(CircuitBreaker circuitBreaker) {
+        this.circuitBreaker = circuitBreaker;
+    }
 
     public String getProvider() {
         return provider;
@@ -170,6 +179,37 @@ public class LlmProperties {
 
         public void setRead(Duration read) {
             this.read = read;
+        }
+    }
+
+    /** Circuit breaker for chain members that have a successor ({@code llm.circuit-breaker.*}). */
+    public static class CircuitBreaker {
+        private boolean enabled = true;
+        private int failureThreshold = 3;
+        private Duration openDuration = Duration.ofSeconds(60);
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public int getFailureThreshold() {
+            return failureThreshold;
+        }
+
+        public void setFailureThreshold(int failureThreshold) {
+            this.failureThreshold = failureThreshold;
+        }
+
+        public Duration getOpenDuration() {
+            return openDuration;
+        }
+
+        public void setOpenDuration(Duration openDuration) {
+            this.openDuration = openDuration;
         }
     }
 
