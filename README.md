@@ -39,7 +39,7 @@ agent MAE ≤ 0.70 × catalog MAE.
 | PDF | OpenPDF (generate), PDFBox (read) |
 | API docs | springdoc-openapi (off in production unless `SWAGGER_ENABLED=true`) |
 | CI | GitHub Actions: full suite, pgvector tests must not be skipped, gitleaks, OSV dependency scan |
-| Deploy | Docker → Render (free), Supabase (free), frontend on Vercel |
+| Deploy | Docker → Render (free), Supabase (free), frontend on Vercel; or all on AWS (CloudFront + S3 + EC2, see `deploy/aws`) |
 
 ## How the AI is used
 
@@ -251,6 +251,12 @@ What is mailed: a Spanish verification message at registration (token of 32 rand
 with the deposit amount and its reference. Documents go to the authenticated user who performed the action, plus the
 client only with `MAIL_SEND_TO_CLIENT=true`; the body never carries a session token and delivery runs after the
 transaction commits, so a dead SMTP server can never undo a send or fail the HTTP call.
+
+## Deploy (AWS)
+
+The course deployment runs on AWS: CloudFront + private S3 for the frontend, and one EC2 instance
+with the backend and PostgreSQL/pgvector in Docker; secrets live in SSM Parameter Store.
+Follow [the AWS runbook](deploy/aws/README.md) and use [the EC2 user data](deploy/aws/user-data.sh).
 
 ## Deploy (free)
 
