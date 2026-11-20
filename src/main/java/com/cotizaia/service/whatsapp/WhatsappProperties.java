@@ -10,12 +10,11 @@ import org.springframework.boot.context.properties.bind.ConstructorBinding;
  * <li>{@code serviceKey}: the shared secret the WhatsApp service sends in {@code X-API-Key}; while it is blank the
  * service endpoints answer 503, so nothing can drain the queue or use the bot.</li>
  * <li>{@code noticeLifetime}: how long a proposal notice may wait for the service before it is dropped.</li>
- * <li>{@code agencyId}: the agency whose catalog and rates the bot quotes from; without it the bot stays quiet.</li>
- * <li>{@code siteUrl}: the page the bot sends people to for a detailed quote.</li>
+ * <li>{@code siteUrl}: the page the assistant sends people to for their quotation.</li>
  * </ul>
  */
 @ConfigurationProperties("whatsapp")
-public record WhatsappProperties(String serviceKey, Duration noticeLifetime, Long agencyId, String siteUrl) {
+public record WhatsappProperties(String serviceKey, Duration noticeLifetime, String siteUrl) {
 
     /** The service key must be long enough that guessing it is not an option. */
     public static final int MIN_KEY_LENGTH = 32;

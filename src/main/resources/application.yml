@@ -136,9 +136,8 @@ mail:
 whatsapp:
   service-key: ${WHATSAPP_SERVICE_KEY:}
   notice-lifetime: ${WHATSAPP_NOTICE_LIFETIME:PT1H}
-  # The bot: someone writes to the linked number and gets an approximate quote from this agency's catalog and rates,
-  # plus this link. Without WHATSAPP_AGENCY_ID the bot stays quiet.
-  agency-id: ${WHATSAPP_AGENCY_ID:}
+  # The assistant (prompt in whatsapp/asistente-prompt.txt) answers whoever writes to the linked number with the
+  # LLM chain above and sends them to this page for their quotation. It never quotes prices or dates.
   site-url: ${WHATSAPP_SITE_URL:}
 
 app:

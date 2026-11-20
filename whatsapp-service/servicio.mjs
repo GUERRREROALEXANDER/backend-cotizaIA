@@ -1,5 +1,5 @@
 // Servicio de WhatsApp de CotizaIA:
-//  - Bot: quien escribe al numero vinculado recibe una cotizacion aproximada y el link de la pagina.
+//  - Asistente: quien escribe al numero vinculado conversa con el asistente de CotizaIA (IA del backend).
 //  - Cola: envia los mensajes que deja el backend (codigos de verificacion y avisos de propuestas).
 // Uso: npm start (necesita un archivo .env; mira .env.example).
 import makeWASocket, { DisconnectReason, fetchLatestBaileysVersion, useMultiFileAuthState } from '@whiskeysockets/baileys'
@@ -43,8 +43,8 @@ function conectar() {
       try {
         const respuesta = await pedirRespuesta({ backendUrl, apiKey, de: mensaje.key.remoteJid, texto })
         if (respuesta) {
-          await socket.sendMessage(mensaje.key.remoteJid, { text: respuesta }, { quoted: mensaje })
-          console.log('Cotizacion aproximada enviada.')
+          await socket.sendMessage(mensaje.key.remoteJid, { text: respuesta })
+          console.log('Respuesta del asistente enviada.')
         }
       } catch (error) {
         console.error(`No se pudo responder un mensaje: ${error.message}`)

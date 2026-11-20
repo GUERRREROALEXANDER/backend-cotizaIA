@@ -6,5 +6,7 @@ public enum LlmTask {
     EXTRACT,
     EXTRACT_ITEMS,
     SUMMARIZE,
-    DRAFT_PROPOSAL
+    DRAFT_PROPOSAL,
+    /** A free-text chat reply, such as the WhatsApp assistant's. */
+    CHAT
 }

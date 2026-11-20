@@ -1,9 +1,5 @@
 package com.cotizaia.service.whatsapp;
 
-import com.cotizaia.config.RateLimiter;
-import com.cotizaia.pricing.PricingService;
-import com.cotizaia.repository.AgencyRepository;
-import com.cotizaia.repository.RequirementTypeRepository;
 import com.cotizaia.repository.WhatsappContactRepository;
 import com.cotizaia.repository.WhatsappMessageRepository;
 import java.time.Clock;
@@ -35,11 +31,5 @@ public class WhatsappConfiguration {
     @Bean
     public WhatsappServiceKey whatsappServiceKey(WhatsappProperties properties) {
         return new WhatsappServiceKey(properties);
-    }
-
-    @Bean
-    public InstantQuoteService instantQuoteService(WhatsappProperties properties, AgencyRepository agencies,
-            RequirementTypeRepository types, PricingService pricing, RateLimiter limiter) {
-        return new InstantQuoteService(properties, agencies, types, pricing, limiter);
     }
 }

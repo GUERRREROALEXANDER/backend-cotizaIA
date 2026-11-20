@@ -147,7 +147,7 @@ class WhatsappApiTests {
     }
 
     @Test
-    void theBotEndpointNeedsTheServiceKeyAndStaysQuietWithoutAnAgency() throws Exception {
+    void theAssistantEndpointNeedsTheServiceKeyAndAnswers() throws Exception {
         String message = "{\"from\":\"573001234567@s.whatsapp.net\",\"text\":\"quiero una pagina web\"}";
 
         mockMvc.perform(post("/api/whatsapp/bot/reply").contentType(MediaType.APPLICATION_JSON).content(message))
@@ -158,7 +158,7 @@ class WhatsappApiTests {
         mockMvc.perform(post("/api/whatsapp/bot/reply").header("X-API-Key", KEY)
                         .contentType(MediaType.APPLICATION_JSON).content(message))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.reply").doesNotExist());
+                .andExpect(jsonPath("$.reply").value(org.hamcrest.Matchers.containsString("CotizaIA")));
     }
 
     private Map<String, Object> claimFor(String phone) throws Exception {
