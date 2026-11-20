@@ -37,7 +37,10 @@ class LlmProviderSwitchTests {
         runner.withPropertyValues("llm.provider=groq", "llm.chain=gemini,groq").run(context -> {
             FallbackLlmClient chain = (FallbackLlmClient) context.getBean(LlmClient.class);
             assertThat(chain.chain()).extracting(LlmClient::provider).containsExactly("gemini", "groq");
-            assertThat(chain.chain()).allSatisfy(client -> assertThat(client).isInstanceOf(RetryLlmClient.class));
+            assertThat(chain.chain().get(0)).as("gemini has a successor, so it is circuit-broken")
+                    .isInstanceOf(CircuitBreakerLlmClient.class);
+            assertThat(chain.chain().get(1)).as("the last provider is never wrapped")
+                    .isInstanceOf(RetryLlmClient.class);
         });
     }
 

@@ -12,6 +12,8 @@ import org.junit.jupiter.api.Test;
  */
 class DocumentVisitorTests {
 
+    private static final int WORDS_IN_FIXTURE = 20; // 3 titles + 12 paragraph words + 5 source-line words (markers excluded)
+
     private final ProposalDraft draft = new ProposalDraft("Web para restaurante",
             List.of(new DraftSection("Alcance", List.of(
                             new DraftParagraph("Diseno responsive con menu digital.", List.of(1)),
@@ -88,7 +90,7 @@ class DocumentVisitorTests {
         assertThat(stats.paragraphs()).isEqualTo(3);
         assertThat(stats.bulletItems()).isEqualTo(2);
         assertThat(stats.citedSources()).as("distinct [n] markers").isEqualTo(2);
-        assertThat(stats.words()).isGreaterThan(10);
+        assertThat(stats.words()).as("exact, deterministic count").isEqualTo(WORDS_IN_FIXTURE);
         assertThat(stats.readingMinutes()).isEqualTo(1);
     }
 
@@ -105,5 +107,30 @@ class DocumentVisitorTests {
         DocumentStats stats = DocumentStatsVisitor.measure(new SectionNode("", List.of()));
 
         assertThat(stats).isEqualTo(new DocumentStats(0, 0, 0, 0, 0, 0));
+    }
+
+    @Test
+    void anOversizedCitationMarkerDoesNotBreakTheStats() {
+        DocumentStats stats = DocumentStatsVisitor.measure(new ParagraphNode("Texto [99999999999] y [3]"));
+
+        assertThat(stats.citedSources()).isEqualTo(1);
+    }
+
+    @Test
+    void bulletItemsCountTheirCitationsAndDropTheirMarkersFromTheWordCount() {
+        DocumentStats stats = DocumentStatsVisitor.measure(new BulletListNode(List.of("[1] Fuente uno", "[2] Fuente dos")));
+
+        assertThat(stats.citedSources()).isEqualTo(2);
+        assertThat(stats.words()).isEqualTo(4);
+    }
+
+    @Test
+    void exportedTextCannotInjectHeadingsListsOrHtml() {
+        String markdown = MarkdownExportVisitor.export(new SectionNode("", List.of(
+                new ParagraphNode("# Aprobado\n- pago aqui\n1. otro\n<script>x</script>\n**negrita** normal"),
+                new BulletListNode(List.of("linea uno\n# colada")))));
+
+        assertThat(markdown).isEqualTo(
+                "\\# Aprobado\n\\- pago aqui\n\\1. otro\n&lt;script>x&lt;/script>\n**negrita** normal\n\n- linea uno # colada\n");
     }
 }

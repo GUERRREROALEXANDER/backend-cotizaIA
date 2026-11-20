@@ -69,16 +69,14 @@ public class LlmClientConfiguration {
             boolean last = index == names.size() - 1;
             LlmProperties.Retry retry = last ? properties.getRetry() : failoverRetry(properties.getRetry());
             LlmClient member = chainMember(builder, properties, names.get(index));
-            if (!last) {
-                member = withCircuitBreaker(member, properties.getCircuitBreaker());
-            }
-            clients.add(new RetryLlmClient(member, retry, duration -> Thread.sleep(duration.toMillis())));
+            LlmClient retrying = new RetryLlmClient(member, retry, duration -> Thread.sleep(duration.toMillis()));
+            clients.add(last ? retrying : withCircuitBreaker(retrying, properties.getCircuitBreaker()));
         }
         return new FallbackLlmClient(clients);
     }
 
     /**
-     * Wraps a provider that has a successor in a Circuit Breaker, inside its retry: while the circuit is open the
+     * Wraps a provider (already inside its retry) that has a successor in a Circuit Breaker: while the circuit is open the
      * breaker fails fast with a non-retryable error, so the chain hands over at once instead of retrying a provider
      * that is known to be down. The last provider is never wrapped: with no successor, skipping it gains nothing.
      */

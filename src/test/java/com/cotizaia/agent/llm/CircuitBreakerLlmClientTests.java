@@ -97,17 +97,124 @@ class CircuitBreakerLlmClientTests {
         List<Duration> sleeps = new ArrayList<>();
         LlmProperties.Retry retry = new LlmProperties.Retry();
         retry.setMaxAttempts(2);
-        LlmClient guardedGemini = new RetryLlmClient(
-                new CircuitBreakerLlmClient(gemini, 2, Duration.ofSeconds(60), clock), retry, sleeps::add);
+        LlmClient guardedGemini = new CircuitBreakerLlmClient(
+                new RetryLlmClient(gemini, retry, sleeps::add), 1, Duration.ofSeconds(60), clock);
         FallbackLlmClient chain = new FallbackLlmClient(List.of(guardedGemini, groq));
 
         assertThat(chain.complete(request).provider()).isEqualTo("groq");
         int sleepsWhileClosed = sleeps.size();
         assertThat(chain.complete(request).provider()).isEqualTo("groq");
 
-        assertThat(gemini.calls).as("two failed attempts opened the circuit; the second request skipped gemini")
+        assertThat(gemini.calls).as("one request = two attempts = ONE failure; the second request skipped gemini")
                 .isEqualTo(2);
         assertThat(sleeps).as("no backoff is spent on a provider whose circuit is open").hasSize(sleepsWhileClosed);
+    }
+
+    @Test
+    void oneRequestThatExhaustsItsRetriesCountsAsOneFailure() {
+        Flaky gemini = new Flaky("gemini").failing();
+        LlmProperties.Retry retry = new LlmProperties.Retry();
+        retry.setMaxAttempts(2);
+        CircuitBreakerLlmClient breaker = new CircuitBreakerLlmClient(
+                new RetryLlmClient(gemini, retry, duration -> { }), 3, Duration.ofSeconds(60), clock);
+
+        assertThatThrownBy(() -> breaker.complete(request)).isInstanceOf(LlmException.class);
+        assertThatThrownBy(() -> breaker.complete(request)).isInstanceOf(LlmException.class);
+
+        assertThat(breaker.state()).as("2 failed requests < threshold 3").isEqualTo(CircuitBreakerLlmClient.State.CLOSED);
+        assertThatThrownBy(() -> breaker.complete(request)).isInstanceOf(LlmException.class);
+        assertThat(breaker.state()).isEqualTo(CircuitBreakerLlmClient.State.OPEN);
+    }
+
+    @Test
+    void clientFaultsNeverOpenTheCircuit() {
+        LlmClient rejecting = new LlmClient() {
+            @Override
+            public LlmResponse complete(LlmRequest request) {
+                throw new LlmException("HTTP 400 bad request", false);
+            }
+
+            @Override
+            public String provider() {
+                return "gemini";
+            }
+        };
+        CircuitBreakerLlmClient breaker = new CircuitBreakerLlmClient(rejecting, 1, Duration.ofSeconds(60), clock);
+
+        for (int attempt = 0; attempt < 5; attempt++) {
+            assertThatThrownBy(() -> breaker.complete(request)).hasMessageContaining("400");
+        }
+        assertThat(breaker.state()).isEqualTo(CircuitBreakerLlmClient.State.CLOSED);
+    }
+
+    @Test
+    void aLateSuccessFromBeforeTheTripDoesNotCloseAnOpenCircuit() {
+        Flaky provider = new Flaky("gemini");
+        CircuitBreakerLlmClient[] holder = new CircuitBreakerLlmClient[1];
+        LlmClient slow = new LlmClient() {
+            @Override
+            public LlmResponse complete(LlmRequest request) {
+                provider.failing();
+                assertThatThrownBy(() -> holder[0].complete(request)).isInstanceOf(LlmException.class);
+                return new LlmResponse("late", "gemini", "model", 1);
+            }
+
+            @Override
+            public String provider() {
+                return "gemini";
+            }
+        };
+        holder[0] = new CircuitBreakerLlmClient(new LlmClient() {
+            private boolean first = true;
+
+            @Override
+            public LlmResponse complete(LlmRequest request) {
+                if (first) {
+                    first = false;
+                    return slow.complete(request);
+                }
+                return provider.complete(request);
+            }
+
+            @Override
+            public String provider() {
+                return "gemini";
+            }
+        }, 1, Duration.ofSeconds(60), clock);
+
+        holder[0].complete(request);
+
+        assertThat(holder[0].state()).as("the nested failure opened it; the late success must not close it")
+                .isEqualTo(CircuitBreakerLlmClient.State.OPEN);
+    }
+
+    @Test
+    void anErrorDuringTheTrialDoesNotWedgeTheCircuit() {
+        boolean[] explode = {false};
+        Flaky provider = new Flaky("gemini").failing();
+        LlmClient client = new LlmClient() {
+            @Override
+            public LlmResponse complete(LlmRequest request) {
+                if (explode[0]) {
+                    throw new StackOverflowError("simulated");
+                }
+                return provider.complete(request);
+            }
+
+            @Override
+            public String provider() {
+                return "gemini";
+            }
+        };
+        CircuitBreakerLlmClient breaker = new CircuitBreakerLlmClient(client, 1, Duration.ofSeconds(60), clock);
+        assertThatThrownBy(() -> breaker.complete(request)).isInstanceOf(LlmException.class);
+        clock.advance(Duration.ofSeconds(61));
+        explode[0] = true;
+        assertThatThrownBy(() -> breaker.complete(request)).isInstanceOf(StackOverflowError.class);
+
+        explode[0] = false;
+        provider.healthy();
+        assertThat(breaker.complete(request).provider()).as("the trial slot was released").isEqualTo("gemini");
     }
 
     @Test

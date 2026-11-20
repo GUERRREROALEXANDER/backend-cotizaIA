@@ -14,7 +14,7 @@ public final class DocumentStatsVisitor implements DocumentVisitor<Void> {
     /** Average adult reading speed used for the estimate, in words per minute. */
     static final int WORDS_PER_MINUTE = 200;
 
-    private static final Pattern CITATION = Pattern.compile("\\[(\\d+)]");
+    private static final Pattern CITATION = Pattern.compile("\\[(\\d{1,9})]");
     private static final Pattern WORD = Pattern.compile("[\\p{L}\\p{N}][\\p{L}\\p{N}'’.-]*");
 
     private int sections;
@@ -47,11 +47,7 @@ public final class DocumentStatsVisitor implements DocumentVisitor<Void> {
     @Override
     public Void visitParagraph(ParagraphNode paragraph) {
         paragraphs++;
-        Matcher citation = CITATION.matcher(paragraph.text());
-        while (citation.find()) {
-            citedSources.add(Integer.parseInt(citation.group(1)));
-        }
-        words += countWords(CITATION.matcher(paragraph.text()).replaceAll(" "));
+        words += scan(paragraph.text());
         return null;
     }
 
@@ -59,9 +55,18 @@ public final class DocumentStatsVisitor implements DocumentVisitor<Void> {
     public Void visitBulletList(BulletListNode list) {
         bulletItems += list.items().size();
         for (String item : list.items()) {
-            words += countWords(item);
+            words += scan(item);
         }
         return null;
+    }
+
+    /** Collects the distinct [n] markers of a text and returns its word count with the markers removed. */
+    private int scan(String text) {
+        Matcher citation = CITATION.matcher(text);
+        while (citation.find()) {
+            citedSources.add(Integer.parseInt(citation.group(1)));
+        }
+        return countWords(CITATION.matcher(text).replaceAll(" "));
     }
 
     private DocumentStats result() {

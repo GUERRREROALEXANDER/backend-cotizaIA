@@ -13,13 +13,14 @@ import org.slf4j.LoggerFactory;
  * <ul>
  *   <li>CLOSED: calls pass through; consecutive {@link LlmException}s are counted.</li>
  *   <li>OPEN: after {@code failureThreshold} consecutive failures the provider is skipped for {@code openDuration}:
- *       calls fail at once with a non-retryable {@link LlmException}, so the surrounding {@link RetryLlmClient} gives
- *       up immediately and {@link FallbackLlmClient} moves to the next provider without waiting on backoff.</li>
+ *       calls fail at once with a non-retryable {@link LlmException}, so {@link FallbackLlmClient} moves to the next provider without waiting on backoff.</li>
  *   <li>HALF_OPEN: once the open window ends, a single trial call is let through; success closes the circuit,
  *       failure opens it again for another window.</li>
  * </ul>
  *
- * Only {@link LlmException} counts as a provider failure; any other exception is a bug and propagates untouched.
+ * Only a retryable {@link LlmException} counts as a provider failure. The breaker wraps the provider's
+ * {@link RetryLlmClient}, so one logical request that exhausts its retries is one failure, not one per attempt.
+ * Client faults (non-retryable) and bugs propagate untouched and never trip the circuit.
  */
 public class CircuitBreakerLlmClient implements LlmClient {
 
@@ -50,16 +51,23 @@ public class CircuitBreakerLlmClient implements LlmClient {
     @Override
     public LlmResponse complete(LlmRequest request) {
         admit();
+        boolean settled = false;
         try {
             LlmResponse response = delegate.complete(request);
             onSuccess();
+            settled = true;
             return response;
         } catch (LlmException failure) {
-            onFailure();
+            if (failure.isRetryable()) {
+                onFailure();
+                settled = true;
+            }
             throw failure;
-        } catch (RuntimeException bug) {
-            releaseTrial();
-            throw bug;
+        } finally {
+            if (!settled) {
+                // A client fault (non-retryable) or a bug says nothing about provider health: free the trial slot.
+                releaseTrial();
+            }
         }
     }
 
@@ -84,6 +92,10 @@ public class CircuitBreakerLlmClient implements LlmClient {
     }
 
     private synchronized void onSuccess() {
+        if (state == State.OPEN) {
+            // A call admitted before the circuit opened finished late; it must not close a circuit it did not test.
+            return;
+        }
         if (state != State.CLOSED) {
             LOGGER.info("Circuit for provider {} closed again", delegate.provider());
         }
