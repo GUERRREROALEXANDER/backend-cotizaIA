@@ -136,7 +136,7 @@ class WhatsappQuoteChatApiTests {
                             .contentType(MediaType.APPLICATION_JSON).content(documentRequest(phone, proposalId, "PROPOSAL")))
                     .andExpect(status().isNotFound());
         }
-        mockMvc.perform(post("/api/whatsapp/bot/document").header("X-API-Key", "wrong-key-0123456789abcdef0123456789")
+        mockMvc.perform(post("/api/whatsapp/bot/document").header("X-API-Key", "wrong".repeat(8))
                         .contentType(MediaType.APPLICATION_JSON).content(documentRequest(ownerPhone, proposalId, "PROPOSAL")))
                 .andExpect(status().isUnauthorized());
     }
