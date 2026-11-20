@@ -2,15 +2,25 @@ package com.cotizaia.api;
 
 import com.cotizaia.agent.whatsapp.BotReply;
 import com.cotizaia.agent.whatsapp.WhatsappInbox;
+import com.cotizaia.document.DocumentType;
+import com.cotizaia.domain.AppUser;
+import com.cotizaia.domain.ProposalDocument;
+import com.cotizaia.service.DocumentService;
 import com.cotizaia.service.whatsapp.WhatsappServiceKey;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,10 +40,12 @@ public class WhatsappBotController {
 
     private final WhatsappInbox inbox;
     private final WhatsappServiceKey serviceKey;
+    private final DocumentService documents;
 
-    public WhatsappBotController(WhatsappInbox inbox, WhatsappServiceKey serviceKey) {
+    public WhatsappBotController(WhatsappInbox inbox, WhatsappServiceKey serviceKey, DocumentService documents) {
         this.inbox = inbox;
         this.serviceKey = serviceKey;
+        this.documents = documents;
     }
 
     /**
@@ -45,8 +57,17 @@ public class WhatsappBotController {
             @NotBlank @Size(max = 2000) String text) {
     }
 
-    /** {@code sticker} names a robot sticker the service sends before the text (saludo, pensando, listo, cotizar). */
-    public record Reply(String reply, String sticker) {
+    /**
+     * {@code sticker} names a robot sticker the service sends before the text (saludo, pensando, listo, cotizar);
+     * {@code documents} are the PDFs it sends after the text, each fetched from {@code POST /document}.
+     */
+    public record Reply(String reply, String sticker, List<BotReply.Document> documents) {
+    }
+
+    /** {@code phone} is the number that asked: only a verified user of the proposal's agency gets its PDF. */
+    public record DocumentRequest(
+            @NotBlank @Pattern(regexp = "\\+?[1-9]\\d{7,14}", message = "must be a phone number with country code") String phone,
+            @NotNull Long proposalId, @NotNull DocumentType type) {
     }
 
     @PostMapping("/reply")
@@ -55,8 +76,25 @@ public class WhatsappBotController {
             @Valid @RequestBody IncomingMessage message) {
         serviceKey.require(key);
         return inbox.reply(message.from(), message.phone(), message.text().trim())
-                .map(answer -> new Reply(answer.text(), answer.sticker() == null ? null : answer.sticker().fileName()))
-                .orElse(new Reply(null, null));
+                .map(answer -> new Reply(answer.text(), answer.sticker() == null ? null : answer.sticker().fileName(),
+                        answer.documents()))
+                .orElse(new Reply(null, null, List.of()));
+    }
+
+    @PostMapping(value = "/document", produces = MediaType.APPLICATION_PDF_VALUE)
+    @Operation(summary = "A proposal PDF for the WhatsApp service to send to the agency user who asked")
+    public ResponseEntity<byte[]> document(
+            @Parameter(hidden = true) @RequestHeader(value = "X-API-Key", required = false) String key,
+            @Valid @RequestBody DocumentRequest request) {
+        serviceKey.require(key);
+        // Unknown number and another agency's proposal answer the same 404: the service learns nothing either way.
+        AppUser staff = inbox.staff(request.phone())
+                .orElseThrow(() -> new NoSuchElementException("Proposal not found: " + request.proposalId()));
+        ProposalDocument document = documents.get(staff.getAgency().getId(), request.proposalId(), request.type());
+        return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment().filename(document.getFileName()).build().toString())
+                .body(document.getContent());
     }
 
     @ExceptionHandler(WhatsappServiceKey.RefusedException.class)

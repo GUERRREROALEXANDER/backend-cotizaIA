@@ -90,6 +90,58 @@ class WhatsappQuoteChatApiTests {
     }
 
     @Test
+    void aFinishedQuoteSendsTheProposalAndSchedulePdfs() throws Exception {
+        Agency agency = setUpAgency();
+        String phone = verifiedPhone(agency.token());
+        String done = startQuote(phone);
+        long proposalId = Long.parseLong(match(PROPOSAL, done));
+
+        List<Map<String, Object>> documents = lastDocuments;
+        assertThat(documents).extracting(document -> document.get("type")).containsExactly("PROPOSAL", "SCHEDULE");
+        assertThat(documents).extracting(document -> document.get("fileName"))
+                .containsExactly("propuesta-" + proposalId + ".pdf", "cronograma-" + proposalId + ".pdf");
+        assertThat(documents).allSatisfy(document ->
+                assertThat(((Number) document.get("proposalId")).longValue()).isEqualTo(proposalId));
+
+        for (String type : List.of("PROPOSAL", "SCHEDULE")) {
+            byte[] pdf = mockMvc.perform(post("/api/whatsapp/bot/document").header("X-API-Key", KEY)
+                            .contentType(MediaType.APPLICATION_JSON).content(documentRequest(phone, proposalId, type)))
+                    .andExpect(status().isOk())
+                    .andReturn().getResponse().getContentAsByteArray();
+            assertThat(new String(pdf, 0, 5, java.nio.charset.StandardCharsets.US_ASCII)).isEqualTo("%PDF-");
+        }
+    }
+
+    @Test
+    void repliesThatAreNotAFinishedQuoteCarryNoDocuments() throws Exception {
+        Agency agency = setUpAgency();
+        String phone = verifiedPhone(agency.token());
+
+        say(phone, "hola");
+        assertThat(lastDocuments).isEmpty();
+        say(randomPhone(), "quiero una pagina web");
+        assertThat(lastDocuments).isEmpty();
+    }
+
+    @Test
+    void onlyANumberOfTheOwningAgencyCanDownloadItsPdfs() throws Exception {
+        Agency owner = setUpAgency();
+        String ownerPhone = verifiedPhone(owner.token());
+        long proposalId = Long.parseLong(match(PROPOSAL, startQuote(ownerPhone)));
+        Agency other = setUpAgency();
+        String otherPhone = verifiedPhone(other.token());
+
+        for (String phone : List.of(otherPhone, randomPhone())) {
+            mockMvc.perform(post("/api/whatsapp/bot/document").header("X-API-Key", KEY)
+                            .contentType(MediaType.APPLICATION_JSON).content(documentRequest(phone, proposalId, "PROPOSAL")))
+                    .andExpect(status().isNotFound());
+        }
+        mockMvc.perform(post("/api/whatsapp/bot/document").header("X-API-Key", "wrong".repeat(8))
+                        .contentType(MediaType.APPLICATION_JSON).content(documentRequest(ownerPhone, proposalId, "PROPOSAL")))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void theRobotStickerMatchesEachMoment() throws Exception {
         Agency agency = setUpAgency();
         String phone = verifiedPhone(agency.token());
@@ -160,9 +212,28 @@ class WhatsappQuoteChatApiTests {
                         .contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isOk())
                 .andReturn();
-        String reply = JsonPath.read(result.getResponse().getContentAsString(), "$.reply");
+        String json = result.getResponse().getContentAsString();
+        String reply = JsonPath.read(json, "$.reply");
         assertThat(reply).as("reply to %s", text).isNotBlank();
+        lastDocuments = JsonPath.read(json, "$.documents");
         return reply;
+    }
+
+    /** The documents of the last reply {@link #say} got. */
+    private List<Map<String, Object>> lastDocuments = List.of();
+
+    /** Walks a verified number through a quote that needs no clarifying question; returns the final reply. */
+    private String startQuote(String phone) throws Exception {
+        say(phone, "cotizar");
+        say(phone, "Restaurante El Sabor");
+        say(phone, "no");
+        String done = say(phone, RESTAURANT_BRIEF);
+        assertThat(done).contains("✅ Cotización #");
+        return done;
+    }
+
+    private static String documentRequest(String phone, long proposalId, String type) {
+        return "{\"phone\":\"" + phone.substring(1) + "\",\"proposalId\":" + proposalId + ",\"type\":\"" + type + "\"}";
     }
 
     private String sticker(String phone, String text) throws Exception {

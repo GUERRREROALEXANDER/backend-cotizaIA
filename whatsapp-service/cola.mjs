@@ -23,14 +23,33 @@ async function pedir(url, apiKey, body, esperaMs = ESPERA_MS) {
   return respuesta
 }
 
-// Pregunta al backend que contestar a un mensaje recibido. Devuelve { texto, sticker } (sticker puede ser null),
-// o null si el bot no debe responder.
+// Pregunta al backend que contestar a un mensaje recibido. Devuelve { texto, sticker, documentos } (sticker puede ser
+// null; documentos son los PDFs a enviar despues del texto), o null si el bot no debe responder.
 // "telefono" es el numero real de quien escribe: con el, el backend reconoce a un usuario que verifico su numero.
 export async function pedirRespuesta({ backendUrl, apiKey, de, telefono, texto }) {
   const url = `${backendUrl.replace(/\/+$/, '')}/api/whatsapp/bot/reply`
   const cuerpo = { from: de, text: texto.slice(0, 2000), ...(telefono ? { phone: telefono } : {}) }
-  const { reply, sticker } = await (await pedir(url, apiKey, cuerpo, ESPERA_RESPUESTA_MS)).json()
-  return reply ? { texto: reply, sticker: sticker ?? null } : null
+  const { reply, sticker, documents } = await (await pedir(url, apiKey, cuerpo, ESPERA_RESPUESTA_MS)).json()
+  return reply ? { texto: reply, sticker: sticker ?? null, documentos: Array.isArray(documents) ? documents : [] } : null
+}
+
+// Descarga cada PDF de una respuesta y lo entrega a "enviar(contenido, nombreArchivo)". El backend solo lo da si
+// "telefono" es de un usuario verificado de la agencia duena de la propuesta. Un PDF que falla se registra y se sigue
+// con el siguiente. Devuelve cuantos se enviaron.
+export async function enviarDocumentos({ backendUrl, apiKey, telefono, documentos, enviar }) {
+  if (!telefono || !documentos?.length) return 0
+  const url = `${backendUrl.replace(/\/+$/, '')}/api/whatsapp/bot/document`
+  let enviados = 0
+  for (const { proposalId, type, fileName } of documentos) {
+    try {
+      const respuesta = await pedir(url, apiKey, { phone: telefono, proposalId, type })
+      await enviar(Buffer.from(await respuesta.arrayBuffer()), fileName)
+      enviados += 1
+    } catch (error) {
+      console.error(`No se pudo enviar ${fileName}: ${error.message}`)
+    }
+  }
+  return enviados
 }
 
 // El numero de quien escribe (solo digitos, con indicativo) o null. WhatsApp a veces identifica el chat con un

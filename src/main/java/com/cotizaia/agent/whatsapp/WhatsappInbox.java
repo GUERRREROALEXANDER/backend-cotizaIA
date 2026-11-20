@@ -38,9 +38,7 @@ public class WhatsappInbox {
 
     /** The reply to send, or empty to stay quiet. {@code phone} is the sender's number when WhatsApp exposes it. */
     public Optional<BotReply> reply(String from, String phone, String text) {
-        Optional<AppUser> staff = phone == null || phone.isBlank() ? Optional.empty()
-                : contacts.findByPhone(phone.startsWith("+") ? phone : "+" + phone)
-                        .flatMap(contact -> users.findById(contact.getUserId()));
+        Optional<AppUser> staff = staff(phone);
         if (staff.isEmpty()) {
             return assistant.reply(from, text).map(reply -> new BotReply(reply, salesSticker(text, reply)));
         }
@@ -49,6 +47,13 @@ public class WhatsappInbox {
             return Optional.empty();
         }
         return Optional.of(quoteChat.reply(staff.get(), text));
+    }
+
+    /** The agency user who verified this number, if any. Everything agency-scoped the bot does starts here. */
+    public Optional<AppUser> staff(String phone) {
+        return phone == null || phone.isBlank() ? Optional.empty()
+                : contacts.findByPhone(phone.startsWith("+") ? phone : "+" + phone)
+                        .flatMap(contact -> users.findById(contact.getUserId()));
     }
 
     /** The robot waves back at a greeting and shows a quotation when the reply sends the link to quote. */
