@@ -106,7 +106,7 @@ Limitation: rate-limit counters live in memory, per instance. With more than one
 
 ## Design patterns
 
-17 GoF patterns, each in real behavior and each with a test that checks its defining property.
+18 GoF patterns plus two non-GoF patterns (Circuit Breaker, Specification), each in real behavior and each with a test that checks its defining property.
 
 | Category | Pattern | Where | Test |
 |---|---|---|---|
@@ -127,6 +127,9 @@ Limitation: rate-limit counters live in memory, per instance. With more than one
 | Behavioral | State | `domain.state.*`: 10 proposal states, illegal moves → 422 | `ProposalStateTransitionTests` |
 | Behavioral | Strategy | Pricing (hourly / fixed / phased); estimation (memory → catalog → default) | `PricingStrategyTests`, `RetrievalEstimationTests` |
 | Behavioral | Template Method | `AbstractDocumentTemplate`; `PipelineRunRecorder`; `KnowledgeIngestor.ingest()` | `DocumentGeneratorTests`, `PipelineRunRecorderTests` |
+| Behavioral | Visitor | `document.DocumentVisitor` over the `DocumentNode` Composite: `MarkdownExportVisitor` (`GET /api/proposals/{id}/draft/markdown`) and `DocumentStatsVisitor` (`GET /api/proposals/{id}/draft/stats`) | `DocumentVisitorTests` |
+| Resilience (non-GoF) | Circuit Breaker | `agent.llm.CircuitBreakerLlmClient` guards every failover-chain provider that has a successor: after `llm.circuit-breaker.failure-threshold` (3) consecutive failures it is skipped for `llm.circuit-breaker.open-duration` (60 s), then one half-open trial call decides | `CircuitBreakerLlmClientTests` |
+| Domain (non-GoF) | Specification | `domain.spec.Specification` (`and` / `or` / `not`) and `ProposalSpecifications`: approval checklist at `GET /api/proposals/{id}/readiness` | `ProposalSpecificationTests`, `QuotationFlowE2ETests` |
 
 `document.DocumentFactory` is a Simple Factory (a registry), labelled as such.
 
