@@ -10,7 +10,14 @@ import java.util.regex.Pattern;
 public final class MarkdownExportVisitor implements DocumentVisitor<String> {
 
     private static final int MAX_HEADING_LEVEL = 6;
-    private static final Pattern BLOCK_START = Pattern.compile("^(\\s*)([#>]|[+*-](?=\\s)|\\d+[.)](?=\\s))");
+    /**
+     * Line starts that Markdown reads as structure: heading, quote, bullet, a setext underline ({@code ---} or
+     * {@code ===}, which would turn the previous line into a heading) and a code fence. A backslash before the first
+     * character keeps the line literal.
+     */
+    private static final Pattern BLOCK_START = Pattern.compile("^(?:[#>]|[+*-](?=\\s|$)|[=-]+\\s*$|`{3,}|~{3,})");
+    /** Ordered-list marker; the escape goes before the dot, since a backslash before a digit is not an escape. */
+    private static final Pattern ORDERED_START = Pattern.compile("^(\\d{1,9})([.)])(?=\\s|$)");
 
     private int depth;
 
@@ -65,7 +72,12 @@ public final class MarkdownExportVisitor implements DocumentVisitor<String> {
     private static String escapeBlock(String text) {
         StringBuilder escaped = new StringBuilder();
         for (String line : neutralizeHtml(text.strip()).split("\\R", -1)) {
-            escaped.append(BLOCK_START.matcher(line).replaceFirst("$1\\\\$2")).append('\n');
+            // Leading indentation carries no meaning in a paragraph, but 4+ spaces after a blank line make a code block.
+            String bare = line.stripLeading();
+            String safe = ORDERED_START.matcher(bare).find()
+                    ? ORDERED_START.matcher(bare).replaceFirst("$1\\\\$2")
+                    : BLOCK_START.matcher(bare).replaceFirst("\\\\$0");
+            escaped.append(safe).append('\n');
         }
         return escaped.toString().strip();
     }
