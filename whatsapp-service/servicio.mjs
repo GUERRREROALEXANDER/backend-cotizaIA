@@ -5,7 +5,9 @@
 // Uso: npm start (necesita un archivo .env; mira .env.example).
 import makeWASocket, { DisconnectReason, fetchLatestBaileysVersion, useMultiFileAuthState } from '@whiskeysockets/baileys'
 import pino from 'pino'
-import { NumeroSinWhatsapp, enviarDocumentos, pedirRespuesta, procesarCola, telefonoDe, textoEntrante } from './cola.mjs'
+import {
+  NumeroSinWhatsapp, enviarDocumentos, pedirRespuesta, procesarCola, resolverTelefono, textoEntrante,
+} from './cola.mjs'
 import { sticker } from './stickers.mjs'
 
 const backendUrl = process.env.BACKEND_URL
@@ -46,7 +48,7 @@ function conectar() {
       try {
         // "Escribiendo..." mientras el backend responde: una cotizacion con la IA puede tardar.
         await socket.sendPresenceUpdate('composing', jid).catch(() => {})
-        const telefono = telefonoDe(mensaje)
+        const telefono = await resolverTelefono(mensaje, (lid) => socket.signalRepository.lidMapping.getPNForLID(lid))
         const respuesta = await pedirRespuesta({ backendUrl, apiKey, de: jid, telefono, texto })
         await socket.sendPresenceUpdate('paused', jid).catch(() => {})
         if (respuesta) {

@@ -2,7 +2,9 @@
 // Uso: npm test
 import assert from 'node:assert/strict'
 import { afterEach, test } from 'node:test'
-import { NumeroSinWhatsapp, enviarDocumentos, pedirRespuesta, procesarCola, telefonoDe, textoEntrante } from './cola.mjs'
+import {
+  NumeroSinWhatsapp, enviarDocumentos, pedirRespuesta, procesarCola, resolverTelefono, telefonoDe, textoEntrante,
+} from './cola.mjs'
 
 const fetchReal = globalThis.fetch
 afterEach(() => { globalThis.fetch = fetchReal })
@@ -181,4 +183,25 @@ test('un PDF que falla no impide enviar el siguiente, y sin numero no se pide na
   assert.equal(await enviarDocumentos({ ...comun, telefono: '573010944197', documentos: [PROPUESTA, CRONOGRAMA], enviar }), 1)
   assert.deepEqual(nombres, ['cronograma-15.pdf'])
   assert.equal(await enviarDocumentos({ ...comun, telefono: null, documentos: [PROPUESTA], enviar }), 0)
+})
+
+test('un chat @lid sin numero se resuelve con el mapa de alias de la sesion', async () => {
+  const mensaje = { key: { remoteJid: '5051183558812@lid', addressingMode: 'lid' } }
+  const pedidos = []
+  const buscarPN = async (lid) => { pedidos.push(lid); return '573105421367:0@s.whatsapp.net' }
+
+  assert.equal(await resolverTelefono(mensaje, buscarPN), '573105421367')
+  assert.deepEqual(pedidos, ['5051183558812@lid'])
+})
+
+test('si el mensaje ya trae el numero no se consulta el mapa, y sin mapa queda null', async () => {
+  const conNumero = { key: { remoteJid: '573001234567@s.whatsapp.net' } }
+  const sinMapa = { key: { remoteJid: '999@lid' } }
+  let consultas = 0
+  const buscarPN = async () => { consultas += 1; return null }
+
+  assert.equal(await resolverTelefono(conNumero, buscarPN), '573001234567')
+  assert.equal(consultas, 0)
+  assert.equal(await resolverTelefono(sinMapa, buscarPN), null)
+  assert.equal(await resolverTelefono(sinMapa, async () => { throw new Error('store roto') }), null)
 })

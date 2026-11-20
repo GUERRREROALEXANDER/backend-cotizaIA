@@ -65,6 +65,22 @@ export function telefonoDe(mensaje) {
   return null
 }
 
+// Como telefonoDe, pero si el chat llega solo con un alias anonimo (@lid) sin numero, lo busca en el mapa de alias
+// que guarda la sesion de WhatsApp ("buscarPN(lid)" devuelve el jid del numero o null). Sin esto, un usuario
+// verificado cuyo chat usa @lid seria tratado como cliente desconocido. Devuelve el numero o null.
+export async function resolverTelefono(mensaje, buscarPN) {
+  const directo = telefonoDe(mensaje)
+  if (directo) return directo
+  const jid = mensaje?.key?.remoteJid
+  if (typeof jid !== 'string' || !jid.endsWith('@lid')) return null
+  try {
+    const pn = await buscarPN(jid)
+    return pn ? telefonoDe({ key: { remoteJid: pn } }) : null
+  } catch {
+    return null
+  }
+}
+
 // El texto de un mensaje recibido, o null si no es para el bot (propio, de grupo, estado, canal o sin texto).
 export function textoEntrante(mensaje) {
   const jid = mensaje?.key?.remoteJid
