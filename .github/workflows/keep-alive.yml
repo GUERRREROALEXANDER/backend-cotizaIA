@@ -1,24 +1,38 @@
 # Render's free plan stops the service after 15 minutes without traffic, and the
-# next request waits ~1 min for a cold start. Pinging the health check every 10
-# minutes keeps it warm. This is the only free service in the workspace, so 24/7
-# (~744 h) fits inside the 750 free instance hours a month.
-# Note: GitHub may delay scheduled runs, and disables them after 60 days with no
-# repository activity (re-enable from the Actions tab).
+# next request waits for a cold start (20 s to 3 min). GitHub does not honor short
+# cron intervals: a "*/10" schedule actually fired hours apart, so the service
+# slept between runs. Instead, each run stays alive ~5h50m and pings every 5
+# minutes, and a new run starts every 2 hours and replaces the old one
+# (cancel-in-progress). A delayed trigger is covered by the run still going.
+# Public repo: Actions minutes are free. This is the only free Render service in
+# the workspace, so 24/7 (~744 h) fits inside the 750 free instance hours a month.
+# GitHub disables schedules after 60 days with no repository activity
+# (re-enable from the Actions tab).
 name: keep-alive
 
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "0 */2 * * *"
   workflow_dispatch:
+
+concurrency:
+  group: keep-alive
+  cancel-in-progress: true
 
 jobs:
   ping:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 355
     steps:
-      - name: Ping the Render health check
+      - name: Ping the Render health check every 5 minutes
         run: |
-          # --retry covers a cold start that is still booting when the first try lands.
-          curl --fail --silent --show-error --max-time 90 \
-            --retry 3 --retry-delay 20 --retry-all-errors \
-            https://backend-cotizaia.onrender.com/actuator/health
+          end=$(( $(date +%s) + 350*60 ))
+          while [ "$(date +%s)" -lt "$end" ]; do
+            # --retry covers a cold start that is still booting when the first try lands.
+            # A failed ping is logged but does not stop the loop.
+            curl --fail --silent --show-error --max-time 90 \
+              --retry 3 --retry-delay 20 --retry-all-errors \
+              -o /dev/null -w "$(date -u +%H:%M) %{http_code} %{time_total}s\n" \
+              https://backend-cotizaia.onrender.com/actuator/health || echo "ping failed"
+            sleep 300
+          done
