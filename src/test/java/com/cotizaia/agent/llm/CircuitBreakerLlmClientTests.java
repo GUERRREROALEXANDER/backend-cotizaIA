@@ -10,6 +10,12 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
 /** The defining property of a Circuit Breaker: after repeated failures it stops calling the provider for a while. */
@@ -215,6 +221,86 @@ class CircuitBreakerLlmClientTests {
         explode[0] = false;
         provider.healthy();
         assertThat(breaker.complete(request).provider()).as("the trial slot was released").isEqualTo("gemini");
+    }
+
+    /**
+     * Call A was admitted while CLOSED and is still running when the circuit trips and trial B starts. A then ends with
+     * a client fault. A never owned the trial slot, so it must not free it: a third call during B must be rejected
+     * instead of becoming a second concurrent trial.
+     */
+    @Test
+    void aNonTrialCallEndingDuringTheTrialDoesNotFreeTheTrialSlot() throws Exception {
+        CountDownLatch aStarted = new CountDownLatch(1);
+        CountDownLatch releaseA = new CountDownLatch(1);
+        CountDownLatch bStarted = new CountDownLatch(1);
+        CountDownLatch releaseB = new CountDownLatch(1);
+        AtomicInteger providerCalls = new AtomicInteger();
+        LlmClient scripted = new LlmClient() {
+            @Override
+            public LlmResponse complete(LlmRequest call) {
+                providerCalls.incrementAndGet();
+                switch (call.userPrompt()) {
+                    case "A" -> {
+                        aStarted.countDown();
+                        await(releaseA);
+                        throw new LlmException("HTTP 400 bad request", false);
+                    }
+                    case "TRIP" -> throw new LlmException("HTTP 503", true);
+                    case "B" -> {
+                        bStarted.countDown();
+                        await(releaseB);
+                        return new LlmResponse("trial ok", "gemini", "model", 1);
+                    }
+                    default -> {
+                        return new LlmResponse("unexpected", "gemini", "model", 1);
+                    }
+                }
+            }
+
+            @Override
+            public String provider() {
+                return "gemini";
+            }
+        };
+        CircuitBreakerLlmClient breaker = new CircuitBreakerLlmClient(scripted, 1, Duration.ofSeconds(60), clock);
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+        try {
+            Future<?> callA = pool.submit(() -> breaker.complete(prompt("A")));
+            assertThat(aStarted.await(5, TimeUnit.SECONDS)).isTrue();
+            assertThatThrownBy(() -> breaker.complete(prompt("TRIP"))).hasMessageContaining("503");
+            clock.advance(Duration.ofSeconds(61));
+            Future<LlmResponse> trialB = pool.submit(() -> breaker.complete(prompt("B")));
+            assertThat(bStarted.await(5, TimeUnit.SECONDS)).isTrue();
+
+            releaseA.countDown();
+            assertThatThrownBy(() -> callA.get(5, TimeUnit.SECONDS)).hasRootCauseMessage("HTTP 400 bad request");
+
+            assertThatThrownBy(() -> breaker.complete(prompt("C"))).hasMessageContaining("trial call is already");
+            assertThat(providerCalls.get()).as("C never reached the provider").isEqualTo(3);
+
+            releaseB.countDown();
+            assertThat(trialB.get(5, TimeUnit.SECONDS).content()).isEqualTo("trial ok");
+            assertThat(breaker.state()).isEqualTo(CircuitBreakerLlmClient.State.CLOSED);
+        } finally {
+            releaseA.countDown();
+            releaseB.countDown();
+            pool.shutdownNow();
+        }
+    }
+
+    private static LlmRequest prompt(String user) {
+        return new LlmRequest(LlmTask.EXTRACT, "system", user, true);
+    }
+
+    private static void await(CountDownLatch latch) {
+        try {
+            if (!latch.await(5, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("test latch timed out");
+            }
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException(interrupted);
+        }
     }
 
     @Test
