@@ -125,6 +125,37 @@ class QuotationFlowE2ETests {
                 .andExpect(jsonPath("$.to").value("ACCEPTED"));
     }
 
+    /** Visitor (Markdown export, stats) and Specification (approval checklist) reached over HTTP, agency-scoped. */
+    @Test
+    void draftExportStatsAndReadinessChecklist() throws Exception {
+        Agency agency = setUpAgency();
+        Agency other = setUpAgency();
+        long proposalId = readLong(call(post("/api/quotations"), agency.token(),
+                brief(agency.clientId(), RESTAURANT_BRIEF), status().isCreated()).andReturn(), "$.proposalId");
+
+        call(get("/api/proposals/" + proposalId + "/readiness"), agency.token(), null, status().isOk())
+                .andExpect(jsonPath("$.ready").value(true))
+                .andExpect(jsonPath("$.required[?(@.passed == false)]", hasSize(0)));
+
+        MvcResult markdown = call(get("/api/proposals/" + proposalId + "/draft/markdown"), agency.token(), null,
+                status().isOk()).andReturn();
+        assertThat(markdown.getResponse().getContentType()).startsWith("text/markdown");
+        assertThat(markdown.getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8))
+                .startsWith("# ");
+
+        call(get("/api/proposals/" + proposalId + "/draft/stats"), agency.token(), null, status().isOk())
+                .andExpect(jsonPath("$.sections").isNumber())
+                .andExpect(jsonPath("$.readingMinutes").isNumber());
+
+        call(post("/api/proposals/" + proposalId + "/approve"), agency.token(), null, status().isOk());
+        call(get("/api/proposals/" + proposalId + "/readiness"), agency.token(), null, status().isOk())
+                .andExpect(jsonPath("$.ready").value(false))
+                .andExpect(jsonPath("$.required[?(@.passed == false)].code", hasItem("NOT_YET_APPROVED")));
+
+        call(get("/api/proposals/" + proposalId + "/readiness"), other.token(), null, status().isNotFound());
+        call(get("/api/proposals/" + proposalId + "/draft/markdown"), other.token(), null, status().isNotFound());
+    }
+
     @Test
     void haltedBriefIsCompletedByAnsweringItsBlockingQuestions() throws Exception {
         Agency agency = setUpAgency();
