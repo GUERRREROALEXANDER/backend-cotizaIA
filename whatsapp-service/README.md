@@ -56,6 +56,8 @@ existen (`GEMINI_API_KEY`, `GROQ_API_KEY`). El link que envía el asistente es p
 link.
 
 La sesión de WhatsApp queda en `auth_info/` y la clave en `.env`. Las dos son secretas y ya están en `.gitignore`.
+
+Para dejarlo encendido sin un PC: [despliegue en AWS Lightsail](deploy/README.md) (USD 5/mes).
 ## Probar
 
 - **Asistente:** desde otro teléfono escribe al número Claro *"hola"* y luego *"quiero una página web"*. Debe
