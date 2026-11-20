@@ -22,4 +22,9 @@ public record ParagraphNode(String text) implements DocumentNode {
     public String plainText() {
         return text;
     }
+
+    @Override
+    public <R> R accept(DocumentVisitor<R> visitor) {
+        return visitor.visitParagraph(this);
+    }
 }

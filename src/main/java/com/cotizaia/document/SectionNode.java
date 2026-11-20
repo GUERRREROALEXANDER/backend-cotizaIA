@@ -28,6 +28,11 @@ public record SectionNode(String title, List<DocumentNode> children) implements 
     }
 
     @Override
+    public <R> R accept(DocumentVisitor<R> visitor) {
+        return visitor.visitSection(this);
+    }
+
+    @Override
     public String plainText() {
         StringBuilder text = new StringBuilder(title);
         for (DocumentNode child : children) {

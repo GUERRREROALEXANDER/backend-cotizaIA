@@ -28,4 +28,9 @@ public record BulletListNode(List<String> items) implements DocumentNode {
     public String plainText() {
         return String.join("\n", items);
     }
+
+    @Override
+    public <R> R accept(DocumentVisitor<R> visitor) {
+        return visitor.visitBulletList(this);
+    }
 }
