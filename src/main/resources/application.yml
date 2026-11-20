@@ -64,6 +64,12 @@ llm:
     initial-backoff: ${LLM_RETRY_INITIAL_BACKOFF:500ms}
     multiplier: ${LLM_RETRY_MULTIPLIER:2.0}
     max-backoff: ${LLM_RETRY_MAX_BACKOFF:60s}
+  # Only with llm.chain: a provider that has a successor is skipped for open-duration after failure-threshold
+  # consecutive failed requests, then one trial call decides. The last provider is never skipped.
+  circuit-breaker:
+    enabled: ${LLM_CIRCUIT_BREAKER_ENABLED:true}
+    failure-threshold: ${LLM_CIRCUIT_BREAKER_FAILURE_THRESHOLD:3}
+    open-duration: ${LLM_CIRCUIT_BREAKER_OPEN_DURATION:60s}
 
 embedding:
   voyage:

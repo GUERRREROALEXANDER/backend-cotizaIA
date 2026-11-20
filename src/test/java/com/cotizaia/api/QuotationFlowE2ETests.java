@@ -153,7 +153,12 @@ class QuotationFlowE2ETests {
                 .andExpect(jsonPath("$.required[?(@.passed == false)].code", hasItem("NOT_YET_APPROVED")));
 
         call(get("/api/proposals/" + proposalId + "/readiness"), other.token(), null, status().isNotFound());
-        call(get("/api/proposals/" + proposalId + "/draft/markdown"), other.token(), null, status().isNotFound());
+        // The Markdown endpoint declares text/markdown; its errors must still carry the API's JSON error body.
+        MvcResult missing = call(get("/api/proposals/" + proposalId + "/draft/markdown"), other.token(), null,
+                status().isNotFound()).andReturn();
+        assertThat(missing.getResponse().getContentAsString()).contains("\"error\"");
+        call(get("/api/proposals/" + proposalId + "/draft/stats"), other.token(), null, status().isNotFound())
+                .andExpect(jsonPath("$.error").exists());
     }
 
     @Test
