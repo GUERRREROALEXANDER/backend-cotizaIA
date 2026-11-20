@@ -10,6 +10,7 @@ import com.cotizaia.agent.embedding.OllamaCloudAiFactory;
 import com.cotizaia.agent.embedding.RetryEmbeddingClient;
 import com.cotizaia.agent.embedding.StubAiFactory;
 import com.cotizaia.agent.embedding.StubEmbeddingClient;
+import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -65,12 +66,26 @@ public class LlmClientConfiguration {
         List<String> names = Arrays.stream(properties.getChain().split(",")).map(String::trim).toList();
         List<LlmClient> clients = new ArrayList<>();
         for (int index = 0; index < names.size(); index++) {
-            LlmProperties.Retry retry = index == names.size() - 1 ? properties.getRetry()
-                    : failoverRetry(properties.getRetry());
-            clients.add(new RetryLlmClient(chainMember(builder, properties, names.get(index)), retry,
-                    duration -> Thread.sleep(duration.toMillis())));
+            boolean last = index == names.size() - 1;
+            LlmProperties.Retry retry = last ? properties.getRetry() : failoverRetry(properties.getRetry());
+            LlmClient member = chainMember(builder, properties, names.get(index));
+            LlmClient retrying = new RetryLlmClient(member, retry, duration -> Thread.sleep(duration.toMillis()));
+            clients.add(last ? retrying : withCircuitBreaker(retrying, properties.getCircuitBreaker()));
         }
         return new FallbackLlmClient(clients);
+    }
+
+    /**
+     * Wraps a provider (already inside its retry) that has a successor in a Circuit Breaker: while the circuit is open the
+     * breaker fails fast with a non-retryable error, so the chain hands over at once instead of retrying a provider
+     * that is known to be down. The last provider is never wrapped: with no successor, skipping it gains nothing.
+     */
+    static LlmClient withCircuitBreaker(LlmClient member, LlmProperties.CircuitBreaker settings) {
+        if (!settings.isEnabled()) {
+            return member;
+        }
+        return new CircuitBreakerLlmClient(member, settings.getFailureThreshold(), settings.getOpenDuration(),
+                Clock.systemUTC());
     }
 
     private LlmClient chainMember(RestClient.Builder builder, LlmProperties properties, String name) {

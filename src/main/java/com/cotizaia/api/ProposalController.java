@@ -1,10 +1,13 @@
 package com.cotizaia.api;
 
+import com.cotizaia.document.DocumentStats;
 import com.cotizaia.document.DocumentType;
 import com.cotizaia.domain.ProposalDocument;
 import com.cotizaia.domain.ProposalStatus;
+import com.cotizaia.domain.spec.ReadinessReport;
 import com.cotizaia.service.ApprovalQueueService;
 import com.cotizaia.service.DocumentService;
+import com.cotizaia.service.ProposalInsightService;
 import com.cotizaia.service.ProposalService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -41,10 +44,36 @@ public class ProposalController {
 
     private final DocumentService documents;
 
-    public ProposalController(ProposalService proposals, ApprovalQueueService approval, DocumentService documents) {
+    private final ProposalInsightService insights;
+
+    public ProposalController(ProposalService proposals, ApprovalQueueService approval, DocumentService documents,
+            ProposalInsightService insights) {
         this.proposals = proposals;
         this.approval = approval;
         this.documents = documents;
+        this.insights = insights;
+    }
+
+    @GetMapping(value = "/{id}/draft/markdown", produces = "text/markdown;charset=UTF-8")
+    @Operation(summary = "Export the drafted proposal text as Markdown (Visitor over the document tree)")
+    public ResponseEntity<String> draftMarkdown(@PathVariable Long id, CurrentUser user) {
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("text/markdown;charset=UTF-8"))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment().filename("propuesta-" + id + ".md").build().toString())
+                .body(insights.draftMarkdown(user.agencyId(), id));
+    }
+
+    @GetMapping("/{id}/draft/stats")
+    @Operation(summary = "Measure the drafted proposal: sections, words, cited sources, reading time")
+    public DocumentStats draftStats(@PathVariable Long id, CurrentUser user) {
+        return insights.draftStats(user.agencyId(), id);
+    }
+
+    @GetMapping("/{id}/readiness")
+    @Operation(summary = "Approval checklist: which business rules the proposal meets (Specification)")
+    public ReadinessReport readiness(@PathVariable Long id, CurrentUser user) {
+        return insights.readiness(user.agencyId(), id);
     }
 
     @GetMapping
