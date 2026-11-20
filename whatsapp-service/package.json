@@ -1,0 +1,21 @@
+{
+  "name": "cotizaia-whatsapp-service",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Asistente de WhatsApp de CotizaIA: responde a los clientes y envia los mensajes que deja el backend",
+  "type": "module",
+  "scripts": {
+    "iniciar": "node iniciar.mjs",
+    "start": "node --env-file=.env servicio.mjs",
+    "vincular": "node vincular.mjs",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20.6"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "7.0.0-rc14",
+    "pino": "^10.4.0",
+    "qrcode-terminal": "^0.12.0"
+  }
+}

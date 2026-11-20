@@ -130,6 +130,17 @@ mail:
   verification-required: ${MAIL_VERIFICATION_REQUIRED:false}
   send-to-client: ${MAIL_SEND_TO_CLIENT:false}
 
+# WhatsApp notices. The backend only writes an outbox; the Node service in whatsapp-service/ sends it from a linked
+# WhatsApp number. Off until WHATSAPP_SERVICE_KEY is set (32+ characters, the same value in whatsapp-service/.env):
+# without it the outbox endpoints answer 503.
+whatsapp:
+  service-key: ${WHATSAPP_SERVICE_KEY:}
+  notice-lifetime: ${WHATSAPP_NOTICE_LIFETIME:PT1H}
+  # The assistant (prompt in whatsapp/asistente-prompt.txt) answers whoever writes to the linked number with the
+  # LLM chain above and sends them to this page for their quotation (default: the frontend, APP_PUBLIC_URL). It never
+  # quotes prices or dates.
+  site-url: ${WHATSAPP_SITE_URL:${APP_PUBLIC_URL:}}
+
 app:
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}

@@ -71,6 +71,11 @@ services:
         sync: false
       - key: APP_PUBLIC_URL
         sync: false
+      # WhatsApp assistant: the key "npm run iniciar" prints in whatsapp-service/; the link defaults to APP_PUBLIC_URL.
+      - key: WHATSAPP_SERVICE_KEY
+        sync: false
+      - key: WHATSAPP_SITE_URL
+        sync: false
 
   # The frontend is deployed on Vercel, not here: frontend-cotizaIA/vercel.json proxies /api/* to this service
   # (same origin for the SameSite=Strict session cookies) and sends the CSP and security headers.

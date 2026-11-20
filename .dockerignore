@@ -10,3 +10,4 @@ application-local.yml
 README.md
 Dockerfile
 .dockerignore
+whatsapp-service/

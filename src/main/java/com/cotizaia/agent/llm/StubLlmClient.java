@@ -31,6 +31,7 @@ public class StubLlmClient implements LlmClient {
             case EXTRACT_ITEMS -> extractItems(request.userPrompt());
             case SUMMARIZE -> "Resumen ejecutivo: " + brief;
             case DRAFT_PROPOSAL -> draftProposal(request.userPrompt());
+            case CHAT -> "¡Hola! Bienvenido a CotizaIA 👋 ¿Qué proyecto tiene en mente?";
         };
         return new LlmResponse(content, provider(), "offline-stub", 0);
     }
