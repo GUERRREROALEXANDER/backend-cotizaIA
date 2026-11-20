@@ -152,6 +152,9 @@ public class SecurityConfiguration {
                                 "/api/auth/logout", "/api/auth/csrf",
                                 "/api/auth/verify-email", "/api/auth/resend-verification").permitAll()
                         .requestMatchers(HttpMethod.GET, "/actuator/health/**").permitAll()
+                        // The WhatsApp service has no user session: its controllers check its X-API-Key.
+                        .requestMatchers(HttpMethod.POST, "/api/whatsapp/outbox/**", "/api/whatsapp/bot/**")
+                        .permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/error").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(errors -> errors.authenticationEntryPoint(entryPoint)
