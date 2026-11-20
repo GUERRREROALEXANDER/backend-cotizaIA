@@ -4,6 +4,7 @@ import com.cotizaia.domain.WhatsappContact;
 import com.cotizaia.service.whatsapp.PhoneNumbers;
 import com.cotizaia.service.whatsapp.PhoneVerifications;
 import com.cotizaia.service.whatsapp.WhatsappContactService;
+import com.cotizaia.service.whatsapp.WhatsappProperties;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -38,9 +39,22 @@ import org.springframework.web.bind.annotation.RestController;
 public class WhatsappController {
 
     private final WhatsappContactService contacts;
+    private final WhatsappProperties properties;
 
-    public WhatsappController(WhatsappContactService contacts) {
+    public WhatsappController(WhatsappContactService contacts, WhatsappProperties properties) {
         this.contacts = contacts;
+        this.properties = properties;
+    }
+
+    /** Where to write (the linked number, when configured) and whether codes can be delivered at all. */
+    public record InfoResponse(String botNumber, boolean serviceConfigured) {
+    }
+
+    @GetMapping("/info")
+    @Operation(summary = "The CotizaIA WhatsApp number and whether the WhatsApp service is configured")
+    public InfoResponse info() {
+        return new InfoResponse(properties.botNumber().isEmpty() ? null : properties.botNumber(),
+                properties.serviceEnabled());
     }
 
     public record StartRequest(

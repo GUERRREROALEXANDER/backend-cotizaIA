@@ -8,22 +8,42 @@ function headers(apiKey) {
   return { 'X-API-Key': apiKey, 'Content-Type': 'application/json' }
 }
 
-async function pedir(url, apiKey, body) {
+// Render puede tardar en despertar; una cotizacion completa con la IA, todavia mas.
+const ESPERA_MS = 90_000
+const ESPERA_RESPUESTA_MS = 240_000
+
+async function pedir(url, apiKey, body, esperaMs = ESPERA_MS) {
   const respuesta = await fetch(url, {
     method: 'POST',
     headers: headers(apiKey),
     body: body === undefined ? undefined : JSON.stringify(body),
-    signal: AbortSignal.timeout(90_000), // Render puede tardar en despertar.
+    signal: AbortSignal.timeout(esperaMs),
   })
   if (!respuesta.ok) throw new Error(`El backend respondio ${respuesta.status}`)
   return respuesta
 }
 
-// Pregunta al backend que contestar a un mensaje recibido. Devuelve el texto, o null si el bot no debe responder.
-export async function pedirRespuesta({ backendUrl, apiKey, de, texto }) {
+// Pregunta al backend que contestar a un mensaje recibido. Devuelve { texto, sticker } (sticker puede ser null),
+// o null si el bot no debe responder.
+// "telefono" es el numero real de quien escribe: con el, el backend reconoce a un usuario que verifico su numero.
+export async function pedirRespuesta({ backendUrl, apiKey, de, telefono, texto }) {
   const url = `${backendUrl.replace(/\/+$/, '')}/api/whatsapp/bot/reply`
-  const { reply } = await (await pedir(url, apiKey, { from: de, text: texto.slice(0, 2000) })).json()
-  return reply ?? null
+  const cuerpo = { from: de, text: texto.slice(0, 2000), ...(telefono ? { phone: telefono } : {}) }
+  const { reply, sticker } = await (await pedir(url, apiKey, cuerpo, ESPERA_RESPUESTA_MS)).json()
+  return reply ? { texto: reply, sticker: sticker ?? null } : null
+}
+
+// El numero de quien escribe (solo digitos, con indicativo) o null. WhatsApp a veces identifica el chat con un
+// alias anonimo (@lid) y deja el numero real en remoteJidAlt; se toma el primero que sea un numero (@s.whatsapp.net).
+export function telefonoDe(mensaje) {
+  const key = mensaje?.key ?? {}
+  for (const jid of [key.remoteJid, key.remoteJidAlt, key.senderPn]) {
+    if (typeof jid === 'string' && jid.endsWith('@s.whatsapp.net')) {
+      const digitos = jid.split('@')[0].split(':')[0]
+      if (/^[1-9]\d{7,14}$/.test(digitos)) return digitos
+    }
+  }
+  return null
 }
 
 // El texto de un mensaje recibido, o null si no es para el bot (propio, de grupo, estado, canal o sin texto).

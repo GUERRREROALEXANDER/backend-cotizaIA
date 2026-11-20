@@ -6,7 +6,7 @@ import { randomBytes } from 'node:crypto'
 import { rmSync } from 'node:fs'
 import { stdin, stdout } from 'node:process'
 import { createInterface } from 'node:readline/promises'
-import { BACKEND_POR_DEFECTO, EXPLICACION, escribirEnv, leerEnv, revisarBackend } from './configuracion.mjs'
+import { BACKEND_POR_DEFECTO, EXPLICACION, escribirEnv, interpretarNumero, leerEnv, revisarBackend } from './configuracion.mjs'
 import { CARPETA_SESION, numeroVinculado, soloDigitos, vincular } from './whatsapp.mjs'
 
 const consola = createInterface({ input: stdin, output: stdout })
@@ -25,8 +25,15 @@ if (process.argv.includes('--cambiar-numero')) {
 // 1. El numero que va a contestar: lo unico que hay que escribir.
 let numero = soloDigitos(env.WHATSAPP_NUMBER) ?? numeroVinculado()
 while (!numero) {
-  numero = soloDigitos(await consola.question('Numero de WhatsApp que va a contestar (con indicativo, ej. +57 300 123 4567): '))
-  if (!numero) console.log('  Ese numero no es valido. Escribalo con el indicativo del pais, por ejemplo +573001234567.')
+  const leido = interpretarNumero(await consola.question(
+    'Numero de WhatsApp que va a contestar (ej. +57 300 123 4567): '))
+  if (!leido) {
+    console.log('  Ese numero no es valido. Escribalo con el indicativo del pais, por ejemplo +57 300 123 4567.')
+    continue
+  }
+  const visible = `+${leido.digitos}`
+  const ok = await consola.question(`  Se usara ${visible}${leido.colombiaSupuesta ? ' (celular de Colombia)' : ''}. ¿Es correcto? (s/n) `)
+  if (/^s/i.test(ok.trim())) numero = leido.digitos
 }
 
 // 2. Backend y clave: con valores por defecto, para no tener que escribir nada mas.

@@ -3,6 +3,21 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 
 export const BACKEND_POR_DEFECTO = 'https://backend-cotizaia.onrender.com'
 
+// Interpreta el numero como lo escribe una persona. Devuelve { digitos, colombiaSupuesta } o null si no sirve.
+// Sin "+" ni indicativo, 10 digitos que empiezan por 3 son un celular de Colombia: se propone +57 (hay que confirmarlo).
+// Cualquier otro numero sin "+" se rechaza: el indicativo no se puede adivinar y un error vincula otro numero.
+export function interpretarNumero(texto) {
+  const escrito = String(texto ?? '').trim()
+  const digitos = escrito.replace(/\D/g, '')
+  if (escrito.startsWith('+') || escrito.startsWith('00')) {
+    const sinCeros = escrito.startsWith('00') ? digitos.slice(2) : digitos
+    return /^[1-9]\d{7,14}$/.test(sinCeros) ? { digitos: sinCeros, colombiaSupuesta: false } : null
+  }
+  if (/^3\d{9}$/.test(digitos)) return { digitos: `57${digitos}`, colombiaSupuesta: true }
+  if (/^573\d{9}$/.test(digitos)) return { digitos, colombiaSupuesta: false }
+  return null
+}
+
 export function leerEnv(ruta = '.env') {
   if (!existsSync(ruta)) return {}
   const valores = {}

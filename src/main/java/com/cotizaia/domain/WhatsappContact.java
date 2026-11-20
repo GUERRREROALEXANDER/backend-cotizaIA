@@ -24,6 +24,10 @@ public class WhatsappContact {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String phone;
 
+    /** Blind index of the number: how an incoming WhatsApp message finds its user without decrypting every row. */
+    @Column(name = "phone_hash", length = 64)
+    private String phoneHash;
+
     @Column(nullable = false)
     private boolean enabled;
 
@@ -52,6 +56,14 @@ public class WhatsappContact {
         this.phone = newPhone;
         this.enabled = true;
         this.verifiedAt = at;
+    }
+
+    public void setPhoneHash(String phoneHash) {
+        this.phoneHash = phoneHash;
+    }
+
+    public String getPhoneHash() {
+        return phoneHash;
     }
 
     public void setEnabled(boolean enabled) {
