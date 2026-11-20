@@ -122,7 +122,7 @@ Limitation: rate-limit counters live in memory, per instance. With more than one
 | Structural | Facade | `facade.QuotationFacade.processBrief()` | `QuotationFacadeIntegrationTests` |
 | Structural | Proxy | `agent.embedding.CachingEmbeddingClient` (LRU cache in front of the paid embedder) | `CachingEmbeddingClientTests` |
 | Behavioral | Chain of Responsibility | 8 pipeline handlers, Classify → … → Compose; `FallbackLlmClient` tries Gemma 4 then Groq | `PipelineHandlerTests`, `AgentPipelineIntegrationTests`, `FallbackLlmClientTests` |
-| Behavioral | Command | `service.command.AdjustHoursCommand` + `CommandHistory` (undo hour edits) | `AdjustHoursCommandTests`, `ProposalRevisionAndUndoFlowTests` |
+| Behavioral | Command | `service.command.AdjustHoursCommand`, `AddExtraCommand` and `RemoveExtraCommand` in `service/command` + `CommandHistory` (undo hour edits and price extras) | `AdjustHoursCommandTests`, `ProposalRevisionAndUndoFlowTests`, `ProposalExtrasFlowTests` |
 | Behavioral | Observer | `notification.ProposalSubject` → email, dashboard, analytics and `KnowledgeObserver` (learning loop); `mail.DocumentEmailObserver` (`@TransactionalEventListener(AFTER_COMMIT)`) mails the proposal/contract PDF | `ProposalSubjectTests`, `KnowledgeObserverTests`, `DocumentEmailTests` |
 | Behavioral | State | `domain.state.*`: 10 proposal states, illegal moves → 422 | `ProposalStateTransitionTests` |
 | Behavioral | Strategy | Pricing (hourly / fixed / phased); estimation (memory → catalog → default) | `PricingStrategyTests`, `RetrievalEstimationTests` |
