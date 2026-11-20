@@ -137,8 +137,9 @@ whatsapp:
   service-key: ${WHATSAPP_SERVICE_KEY:}
   notice-lifetime: ${WHATSAPP_NOTICE_LIFETIME:PT1H}
   # The assistant (prompt in whatsapp/asistente-prompt.txt) answers whoever writes to the linked number with the
-  # LLM chain above and sends them to this page for their quotation. It never quotes prices or dates.
-  site-url: ${WHATSAPP_SITE_URL:}
+  # LLM chain above and sends them to this page for their quotation (default: the frontend, APP_PUBLIC_URL). It never
+  # quotes prices or dates.
+  site-url: ${WHATSAPP_SITE_URL:${APP_PUBLIC_URL:}}
 
 app:
   cors:

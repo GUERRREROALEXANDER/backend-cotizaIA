@@ -27,42 +27,35 @@ El backend nunca llama a WhatsApp: la sesión vive en este servicio, que puede c
 
 Node 20.6 o superior.
 
-## Puesta en marcha
+## Puesta en marcha (un solo paso)
 
-1. Instala las dependencias:
+Doble clic en **`iniciar.cmd`**, o en una terminal:
 
-   ```powershell
-   cd whatsapp-service
-   npm install
-   ```
+```powershell
+cd whatsapp-service
+npm install      # solo la primera vez (iniciar.cmd lo hace solo)
+npm run iniciar
+```
 
-2. Crea la clave compartida (32+ caracteres) y ponla **igual** en los dos lados:
+La primera vez **solo pide el número que va a contestar** (la SIM Claro), con indicativo: `+57 300 123 4567`.
+Todo lo demás lo hace el instalador:
 
-   ```powershell
-   node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-   ```
+1. Crea el `.env`, con el backend de Render ya puesto y una clave del servicio generada al azar.
+2. Comprueba que el backend acepte esa clave. Si no, explica qué falta, por ejemplo:
+   *"En Render > backend-cotizaia > Environment agregue `WHATSAPP_SERVICE_KEY = …`"*. Luego espera solo hasta que
+   el backend esté listo.
+3. Muestra un **código de 8 caracteres**. En el teléfono con la SIM Claro: WhatsApp > Dispositivos vinculados >
+   Vincular un dispositivo > *"Vincular con el número de teléfono"*, y se escribe el código.
+4. Arranca el asistente. Deje la ventana abierta.
 
-   - Backend: `WHATSAPP_SERVICE_KEY`, `WHATSAPP_SITE_URL` (el link que envía el asistente) y las llaves de IA
-     (`LLM_CHAIN`, `GEMINI_API_KEY`, `GROQ_API_KEY`). Sin IA disponible el asistente responde un mensaje fijo con el link.
-   - Servicio: copia `.env.example` como `.env` y llena `BACKEND_URL` y `WHATSAPP_SERVICE_KEY`.
+Las siguientes veces no pregunta nada: solo arranca. Para usar otro número: `npm run iniciar -- --cambiar-numero`.
 
-3. Vincula la SIM Claro (una sola vez). En el teléfono con la SIM, abre WhatsApp y ve a *Dispositivos vinculados >
-   Vincular un dispositivo*. Luego elige una de estas dos formas:
+En el backend (Render) solo hacen falta `WHATSAPP_SERVICE_KEY`, que el instalador muestra, y las llaves de IA que ya
+existen (`GEMINI_API_KEY`, `GROQ_API_KEY`). El link que envía el asistente es por defecto el frontend
+(`APP_PUBLIC_URL`); para otro, `WHATSAPP_SITE_URL`. Sin IA disponible, el asistente responde un mensaje fijo con el
+link.
 
-   ```powershell
-   npm run vincular                       # muestra un QR para escanear
-   npm run vincular -- +573XXXXXXXXX      # o un código de 8 caracteres para escribir en el teléfono
-   ```
-
-   La sesión queda en `auth_info/`. Esa carpeta es secreta, porque con ella se pueden enviar mensajes como ese
-   número. Ya está en `.gitignore`.
-
-4. Arranca el servicio:
-
-   ```powershell
-   npm start
-   ```
-
+La sesión de WhatsApp queda en `auth_info/` y la clave en `.env`. Las dos son secretas y ya están en `.gitignore`.
 ## Probar
 
 - **Asistente:** desde otro teléfono escribe al número Claro *"hola"* y luego *"quiero una página web"*. Debe
@@ -70,6 +63,7 @@ Node 20.6 o superior.
 - **Código:** en CotizaIA, `POST /api/auth/me/whatsapp/verification` con `{"phone":"+573XXXXXXXXX"}`. Llega el
   código; envíalo con `POST /api/auth/me/whatsapp/verify` y `{"code":"123456"}`.
 - **Pruebas automáticas:** `npm test`, sin WhatsApp ni backend reales.
+- **Vincular a mano** (si lo prefiere con QR): `npm run vincular`.
 
 ## Límites que protegen el número
 
