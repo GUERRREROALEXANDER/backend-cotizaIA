@@ -107,10 +107,11 @@ class SchedulePersistenceTests {
                         new ScheduleService.PhaseSpec("Development", new BigDecimal("0.5000")),
                         new ScheduleService.PhaseSpec("Integration", new BigDecimal("0.1250")),
                         new ScheduleService.PhaseSpec("QA + launch", new BigDecimal("0.1250"))));
-        scheduleService.addDependency(
+        PhaseDependency firstEdge = scheduleService.addDependency(
                 schedule.getProposal().getId(),
                 schedule.getPhases().get(1).getId(),
                 schedule.getPhases().get(0).getId());
+        assertThat(firstEdge.getId()).as("the returned edge is the persisted one").isNotNull();
         scheduleService.addDependency(
                 schedule.getProposal().getId(),
                 schedule.getPhases().get(2).getId(),

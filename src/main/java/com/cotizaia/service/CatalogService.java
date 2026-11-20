@@ -4,6 +4,7 @@ import com.cotizaia.domain.RequirementType;
 import com.cotizaia.domain.ServiceCatalog;
 import com.cotizaia.domain.ServiceCategory;
 import com.cotizaia.repository.AgencyRepository;
+import com.cotizaia.repository.ExtractedRequirementRepository;
 import com.cotizaia.repository.ServiceCatalogRepository;
 import com.cotizaia.repository.ServiceCategoryRepository;
 import java.math.BigDecimal;
@@ -26,11 +27,14 @@ public class CatalogService {
 
     private final ServiceCategoryRepository categories;
 
+    private final ExtractedRequirementRepository requirements;
+
     public CatalogService(ServiceCatalogRepository catalogs, AgencyRepository agencies,
-            ServiceCategoryRepository categories) {
+            ServiceCategoryRepository categories, ExtractedRequirementRepository requirements) {
         this.catalogs = catalogs;
         this.agencies = agencies;
         this.categories = categories;
+        this.requirements = requirements;
     }
 
     @Transactional(readOnly = true)
@@ -62,8 +66,13 @@ public class CatalogService {
         return catalogs.saveAndFlush(catalog);
     }
 
+    /** A catalog whose requirement types were already quoted is kept: 409 with the reason, not a foreign-key error. */
     public void delete(Long agencyId, Long id) {
-        catalogs.delete(get(agencyId, id));
+        ServiceCatalog catalog = get(agencyId, id);
+        if (requirements.existsByRequirementTypeServiceCatalogId(catalog.getId())) {
+            throw new IllegalStateException("Catalog " + id + " is used by existing briefs and cannot be deleted");
+        }
+        catalogs.delete(catalog);
         catalogs.flush();
     }
 
@@ -71,7 +80,9 @@ public class CatalogService {
             BigDecimal estimatedHours) {
         ServiceCatalog catalog = get(agencyId, catalogId);
         RequirementType type = catalog.addRequirementType(name, description, estimatedHours);
-        catalogs.saveAndFlush(catalog);
+        // The catalog is already managed: flush cascades PERSIST onto this very instance, so the returned type has
+        // its id. saveAndFlush would merge, persisting a copy and leaving the returned object with a null id.
+        catalogs.flush();
         return type;
     }
 
@@ -87,7 +98,12 @@ public class CatalogService {
 
     public void deleteType(Long agencyId, Long catalogId, Long typeId) {
         ServiceCatalog catalog = get(agencyId, catalogId);
-        catalog.removeRequirementType(type(catalog, typeId));
+        RequirementType type = type(catalog, typeId);
+        if (requirements.existsByRequirementTypeId(type.getId())) {
+            throw new IllegalStateException("Requirement type " + typeId
+                    + " is used by existing briefs and cannot be deleted");
+        }
+        catalog.removeRequirementType(type);
         catalogs.flush();
     }
 
