@@ -1,10 +1,45 @@
 // Vinculacion del numero que contestara, compartida por iniciar.mjs y vincular.mjs.
 import makeWASocket, { DisconnectReason, fetchLatestBaileysVersion, useMultiFileAuthState } from '@whiskeysockets/baileys'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import pino from 'pino'
 import qrcode from 'qrcode-terminal'
 
+const require = createRequire(import.meta.url)
+const QRCode = require('qrcode-terminal/vendor/QRCode')
+const QRErrorCorrectLevel = require('qrcode-terminal/vendor/QRCode/QRErrorCorrectLevel')
+
 export const CARPETA_SESION = 'auth_info'
+export const PAGINA_QR = 'vincular-qr.html'
+
+// El QR como SVG, para verlo en el navegador: la terminal a veces lo deforma y no se deja escanear.
+export function qrSvg(texto) {
+  const qr = new QRCode(-1, QRErrorCorrectLevel.L)
+  qr.addData(texto)
+  qr.make()
+  const n = qr.getModuleCount()
+  let cuadros = ''
+  for (let fila = 0; fila < n; fila += 1) {
+    for (let col = 0; col < n; col += 1) {
+      if (qr.isDark(fila, col)) cuadros += `M${col + 4} ${fila + 4}h1v1h-1z`
+    }
+  }
+  const lado = n + 8
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${lado} ${lado}" shape-rendering="crispEdges">`
+    + `<rect width="${lado}" height="${lado}" fill="#fff"/><path d="${cuadros}" fill="#000"/></svg>`
+}
+
+// Pagina que se recarga sola: WhatsApp cambia el QR cada ~20 segundos.
+function escribirPaginaQr(qr) {
+  writeFileSync(PAGINA_QR, `<!doctype html><html lang="es"><head><meta charset="utf-8">
+<meta http-equiv="refresh" content="3"><title>Vincular WhatsApp</title>
+<style>body{font-family:system-ui,sans-serif;background:#f4f4f4;color:#111;text-align:center;margin:0;padding:24px}
+.qr{width:min(80vw,420px);background:#fff;padding:12px;border-radius:12px;box-shadow:0 2px 12px #0002}</style></head>
+<body><h2>Vincular el número del asistente de CotizaIA</h2>
+<p>En el teléfono: WhatsApp &gt; Dispositivos vinculados &gt; Vincular un dispositivo, y escanee:</p>
+<div class="qr">${qrSvg(qr)}</div>
+<p>El código cambia solo cada pocos segundos. Esta página se actualiza sola.</p></body></html>`)
+}
 
 // El numero con indicativo, solo digitos (573001234567), o null si no es valido.
 export function soloDigitos(numero) {
@@ -27,7 +62,7 @@ export function numeroVinculado() {
 
 // Vincula el numero como "dispositivo vinculado". Con telefono muestra un codigo de 8 caracteres; sin el, un QR.
 // Termina cuando WhatsApp confirma la vinculacion.
-export async function vincular({ telefono } = {}) {
+export async function vincular({ telefono, pagina = false } = {}) {
   const { state, saveCreds } = await useMultiFileAuthState(CARPETA_SESION)
   const { version } = await fetchLatestBaileysVersion()
   let codigoPedido = false
@@ -50,6 +85,7 @@ export async function vincular({ telefono } = {}) {
             fallo(new Error(`WhatsApp no entrego el codigo: ${error.message}`))
           }
         } else if (qr && !telefono) {
+          if (pagina) escribirPaginaQr(qr)
           console.clear()
           console.log('En el telefono: WhatsApp > Dispositivos vinculados > Vincular un dispositivo\n')
           qrcode.generate(qr, { small: true })
@@ -57,6 +93,7 @@ export async function vincular({ telefono } = {}) {
         if (connection === 'open') {
           // Se da un momento para que WhatsApp termine de guardar las credenciales.
           await new Promise((espera) => setTimeout(espera, 1500))
+          if (pagina) rmSync(PAGINA_QR, { force: true })
           socket.end(undefined)
           listo()
         }
