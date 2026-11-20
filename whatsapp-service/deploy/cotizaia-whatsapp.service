@@ -1,0 +1,28 @@
+# systemd unit for the WhatsApp service on a small Linux server (see deploy/README.md).
+# Reads .env and auth_info/ from /opt/cotizaia/whatsapp-service, which setup.sh prepares.
+[Unit]
+Description=CotizaIA WhatsApp service
+Wants=network-online.target
+After=network-online.target
+# A logged-out session exits with code 1 on every start: stop retrying after 5 tries in 10 minutes
+# instead of hammering WhatsApp. "systemctl reset-failed" + "start" after re-linking.
+StartLimitIntervalSec=600
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=cotizaia
+WorkingDirectory=/opt/cotizaia/whatsapp-service
+ExecStart=/usr/bin/node --env-file=.env servicio.mjs
+Restart=always
+RestartSec=30
+# 512 MB machines: keep Node below the box so the kernel never kills sshd instead.
+Environment=NODE_OPTIONS=--max-old-space-size=256
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/cotizaia/whatsapp-service/auth_info
+
+[Install]
+WantedBy=multi-user.target
