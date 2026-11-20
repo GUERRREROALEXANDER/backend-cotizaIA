@@ -131,6 +131,15 @@ class DocumentVisitorTests {
                 new BulletListNode(List.of("linea uno\n# colada")))));
 
         assertThat(markdown).isEqualTo(
-                "\\# Aprobado\n\\- pago aqui\n\\1. otro\n&lt;script>x&lt;/script>\n**negrita** normal\n\n- linea uno # colada\n");
+                "\\# Aprobado\n\\- pago aqui\n1\\. otro\n&lt;script>x&lt;/script>\n**negrita** normal\n\n- linea uno # colada\n");
+    }
+
+    @Test
+    void setextUnderlinesCodeFencesAndIndentationStayPlainText() {
+        String markdown = MarkdownExportVisitor.export(new ParagraphNode(
+                "Titulo falso\n---\nOtro\n===\n```js\n~~~\n2) paso\n\n    codigo indentado\n-5% de descuento"));
+
+        assertThat(markdown).isEqualTo("Titulo falso\n\\---\nOtro\n\\===\n\\```js\n\\~~~\n2\\) paso\n\ncodigo indentado\n"
+                + "-5% de descuento\n");
     }
 }

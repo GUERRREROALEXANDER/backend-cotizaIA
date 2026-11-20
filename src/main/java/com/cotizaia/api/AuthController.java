@@ -5,6 +5,7 @@ import com.cotizaia.service.AuthService;
 import com.cotizaia.service.AuthService.IssuedRefreshToken;
 import com.cotizaia.service.JwtTokenService.IssuedToken;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -80,7 +81,7 @@ public class AuthController {
 
     @GetMapping("/csrf")
     @Operation(summary = "Issue the XSRF-TOKEN cookie for the SPA double submit")
-    public ResponseEntity<Void> csrf(CsrfToken token) {
+    public ResponseEntity<Void> csrf(@Parameter(hidden = true) CsrfToken token) {
         // Spring Security 6 defers CSRF token rendering: touching the value
         // forces the XSRF-TOKEN cookie onto this response.
         token.getToken();

@@ -50,7 +50,7 @@ public class CircuitBreakerLlmClient implements LlmClient {
 
     @Override
     public LlmResponse complete(LlmRequest request) {
-        admit();
+        boolean trial = admit();
         boolean settled = false;
         try {
             LlmResponse response = delegate.complete(request);
@@ -64,15 +64,20 @@ public class CircuitBreakerLlmClient implements LlmClient {
             }
             throw failure;
         } finally {
-            if (!settled) {
+            if (!settled && trial) {
                 // A client fault (non-retryable) or a bug says nothing about provider health: free the trial slot.
+                // Only the call that owns the slot may free it, or a second trial could slip in concurrently.
                 releaseTrial();
             }
         }
     }
 
-    /** Decides whether this call may reach the provider, moving OPEN to HALF_OPEN when the window has passed. */
-    private synchronized void admit() {
+    /**
+     * Decides whether this call may reach the provider, moving OPEN to HALF_OPEN when the window has passed.
+     *
+     * @return {@code true} when this call is the half-open trial and therefore owns the trial slot
+     */
+    private synchronized boolean admit() {
         if (state == State.OPEN) {
             Instant reopensAt = openedAt.plus(openDuration);
             if (clock.instant().isBefore(reopensAt)) {
@@ -88,7 +93,9 @@ public class CircuitBreakerLlmClient implements LlmClient {
                         + "; a trial call is already in flight", false);
             }
             trialInFlight = true;
+            return true;
         }
+        return false;
     }
 
     private synchronized void onSuccess() {

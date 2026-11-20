@@ -91,7 +91,8 @@ public class ScheduleService {
         Phase dependent = findPhase(schedule, dependentPhaseId);
         Phase prerequisite = findPhase(schedule, prerequisitePhaseId);
         PhaseDependency edge = schedule.addDependency(dependent, prerequisite);
-        scheduleRepository.saveAndFlush(schedule);
+        // Managed schedule: flush persists this edge instance (saveAndFlush would merge a copy and drop its id).
+        scheduleRepository.flush();
         return edge;
     }
 

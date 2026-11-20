@@ -67,6 +67,11 @@ llm:
     initial-backoff: ${LLM_RETRY_INITIAL_BACKOFF:500ms}
     multiplier: ${LLM_RETRY_MULTIPLIER:2.0}
     max-backoff: ${LLM_RETRY_MAX_BACKOFF:60s}
+  # Optional. Circuit breaker for the failover chain (llm.chain); the last provider is never skipped.
+  circuit-breaker:
+    enabled: ${LLM_CIRCUIT_BREAKER_ENABLED:true}
+    failure-threshold: ${LLM_CIRCUIT_BREAKER_FAILURE_THRESHOLD:3}
+    open-duration: ${LLM_CIRCUIT_BREAKER_OPEN_DURATION:60s}
 
 # =============================================================================
 # Required environment variables
@@ -86,6 +91,9 @@ llm:
 # LLM_RETRY_MAX_BACKOFF   Default 60s (also caps provider Retry-After).
 # LLM_RETRY_INITIAL_BACKOFF  Default 500ms.
 # LLM_RETRY_MULTIPLIER  Default 2.0.
+# LLM_CIRCUIT_BREAKER_ENABLED            Default true (only acts with LLM_CHAIN).
+# LLM_CIRCUIT_BREAKER_FAILURE_THRESHOLD  Default 3 consecutive failed requests.
+# LLM_CIRCUIT_BREAKER_OPEN_DURATION      Default 60s.
 # OLLAMA_BASE_URL  Default http://localhost:11434.
 # OLLAMA_MODEL     Default llama3.1.
 # GROQ_BASE_URL    Default https://api.groq.com/openai/v1.
