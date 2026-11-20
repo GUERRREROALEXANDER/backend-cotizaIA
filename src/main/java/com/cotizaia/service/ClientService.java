@@ -4,6 +4,7 @@ import com.cotizaia.domain.Agency;
 import com.cotizaia.crypto.BlindIndex;
 import com.cotizaia.domain.Client;
 import com.cotizaia.repository.AgencyRepository;
+import com.cotizaia.repository.BriefRepository;
 import com.cotizaia.repository.ClientRepository;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -24,10 +25,14 @@ public class ClientService {
 
     private final BlindIndex blindIndex;
 
-    public ClientService(ClientRepository clients, AgencyRepository agencies, BlindIndex blindIndex) {
+    private final BriefRepository briefs;
+
+    public ClientService(ClientRepository clients, AgencyRepository agencies, BlindIndex blindIndex,
+            BriefRepository briefs) {
         this.clients = clients;
         this.agencies = agencies;
         this.blindIndex = blindIndex;
+        this.briefs = briefs;
     }
 
     @Transactional(readOnly = true)
@@ -59,8 +64,18 @@ public class ClientService {
         return clients.saveAndFlush(client);
     }
 
+    /**
+     * Refuses up front (409 with a clear reason) to delete a client that already has briefs, instead of letting the
+     * foreign key fail; the constraint stays as the safety net for a concurrent insert.
+     */
     public void delete(Long agencyId, Long id) {
-        clients.delete(get(agencyId, id));
+        Client client = get(agencyId, id);
+        long briefCount = briefs.countByClientId(client.getId());
+        if (briefCount > 0) {
+            throw new IllegalStateException("Client " + id + " has " + briefCount
+                    + " brief(s) and cannot be deleted");
+        }
+        clients.delete(client);
         clients.flush();
     }
 }

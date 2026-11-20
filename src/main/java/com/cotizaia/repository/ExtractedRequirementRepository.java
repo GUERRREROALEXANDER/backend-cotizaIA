@@ -23,6 +23,12 @@ public interface ExtractedRequirementRepository extends JpaRepository<ExtractedR
 
     long countByBriefIdAndAmbiguityFlagTrue(Long briefId);
 
+    /** Whether any brief already used this requirement type, which then cannot be deleted. */
+    boolean existsByRequirementTypeId(Long requirementTypeId);
+
+    /** Whether any brief already used a requirement type of this catalog, which then cannot be deleted. */
+    boolean existsByRequirementTypeServiceCatalogId(Long serviceCatalogId);
+
     @Query("select r from ExtractedRequirement r where r.brief.id = :briefId "
             + "and not exists (select i.id from QuotedItem i where i.requirement = r)")
     List<ExtractedRequirement> findUnreferencedByBriefId(@Param("briefId") Long briefId);

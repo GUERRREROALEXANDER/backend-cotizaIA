@@ -123,6 +123,20 @@ class QuotationFlowE2ETests {
                 status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.from").value("IN_REVIEW"))
                 .andExpect(jsonPath("$.to").value("ACCEPTED"));
+
+        // Data already used by a quotation is kept, with a reason the user can act on (not a foreign-key error).
+        call(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete(
+                "/api/clients/" + agency.clientId()), agency.token(), null, status().isConflict())
+                .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.containsString("brief")));
+        long catalogId = readLong(call(get("/api/catalog"), agency.token(), null, status().isOk()).andReturn(),
+                "$[0].id");
+        long usedTypeId = readLong(call(get("/api/catalog"), agency.token(), null, status().isOk()).andReturn(),
+                "$[0].requirementTypes[0].id");
+        call(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete(
+                "/api/catalog/" + catalogId), agency.token(), null, status().isConflict())
+                .andExpect(jsonPath("$.error").value(org.hamcrest.Matchers.containsString("used by existing briefs")));
+        call(get("/api/clients/" + agency.clientId()), agency.token(), null, status().isOk());
+        assertThat(usedTypeId).isPositive();
     }
 
     /** Visitor (Markdown export, stats) and Specification (approval checklist) reached over HTTP, agency-scoped. */
