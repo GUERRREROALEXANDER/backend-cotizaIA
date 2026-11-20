@@ -5,7 +5,7 @@ import { mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, test } from 'node:test'
-import { escribirEnv, leerEnv, revisarBackend } from './configuracion.mjs'
+import { escribirEnv, interpretarNumero, leerEnv, revisarBackend } from './configuracion.mjs'
 import { soloDigitos } from './whatsapp.mjs'
 
 const fetchReal = globalThis.fetch
@@ -55,4 +55,21 @@ test('el diagnostico distingue cada problema del backend', async () => {
   assert.equal(await revisarBackend(backend), 'sin-whatsapp')
   globalThis.fetch = async () => { throw new Error('ENOTFOUND') }
   assert.equal(await revisarBackend(backend), 'sin-conexion')
+})
+
+test('un celular colombiano sin +57 se reconoce y se pide confirmarlo', () => {
+  assert.deepEqual(interpretarNumero('300 123 4567'), { digitos: '573001234567', colombiaSupuesta: true })
+  assert.deepEqual(interpretarNumero('3001234567'), { digitos: '573001234567', colombiaSupuesta: true })
+  assert.deepEqual(interpretarNumero('+57 300 123 4567'), { digitos: '573001234567', colombiaSupuesta: false })
+  assert.deepEqual(interpretarNumero('573001234567'), { digitos: '573001234567', colombiaSupuesta: false })
+  assert.deepEqual(interpretarNumero('0057 300 123 4567'), { digitos: '573001234567', colombiaSupuesta: false })
+  assert.deepEqual(interpretarNumero('+1 415 555 0100'), { digitos: '14155550100', colombiaSupuesta: false })
+})
+
+test('un numero sin indicativo que no es celular colombiano se rechaza', () => {
+  assert.equal(interpretarNumero('3'), null)
+  assert.equal(interpretarNumero('4155550100'), null)
+  assert.equal(interpretarNumero('300123'), null)
+  assert.equal(interpretarNumero(''), null)
+  assert.equal(interpretarNumero('+0573001234567'), null)
 })
