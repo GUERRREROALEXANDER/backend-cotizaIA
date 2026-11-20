@@ -32,9 +32,10 @@ fi
 
 id cotizaia >/dev/null 2>&1 || useradd --system --create-home --home-dir /home/cotizaia --shell /usr/sbin/nologin cotizaia
 
+# The checkout belongs to the service user, so git (running as root) must be told it is safe.
 if [ -d "$APP/.git" ]; then
-  git -C "$APP" fetch --depth 1 origin "$BRANCH"
-  git -C "$APP" reset --hard FETCH_HEAD
+  git -c safe.directory="$APP" -C "$APP" fetch --depth 1 origin "$BRANCH"
+  git -c safe.directory="$APP" -C "$APP" reset --hard FETCH_HEAD
 else
   git clone --depth 1 --branch "$BRANCH" "$REPO" "$APP"
 fi
