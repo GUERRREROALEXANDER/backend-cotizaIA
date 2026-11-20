@@ -1,5 +1,6 @@
 package com.cotizaia.service.whatsapp;
 
+import com.cotizaia.crypto.BlindIndex;
 import com.cotizaia.repository.WhatsappContactRepository;
 import com.cotizaia.repository.WhatsappMessageRepository;
 import java.time.Clock;
@@ -24,8 +25,8 @@ public class WhatsappConfiguration {
 
     @Bean
     public WhatsappContactService whatsappContactService(WhatsappContactRepository contacts, WhatsappOutbox outbox,
-            PhoneVerifications verifications) {
-        return new WhatsappContactService(contacts, outbox, verifications, Clock.systemUTC());
+            PhoneVerifications verifications, BlindIndex blindIndex) {
+        return new WhatsappContactService(contacts, outbox, verifications, blindIndex, Clock.systemUTC());
     }
 
     @Bean

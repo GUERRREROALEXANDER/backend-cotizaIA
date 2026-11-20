@@ -2,7 +2,7 @@
 // Uso: npm test
 import assert from 'node:assert/strict'
 import { afterEach, test } from 'node:test'
-import { NumeroSinWhatsapp, pedirRespuesta, procesarCola, textoEntrante } from './cola.mjs'
+import { NumeroSinWhatsapp, pedirRespuesta, procesarCola, telefonoDe, textoEntrante } from './cola.mjs'
 
 const fetchReal = globalThis.fetch
 afterEach(() => { globalThis.fetch = fetchReal })
@@ -94,4 +94,29 @@ test('solo se contestan mensajes de texto de personas', () => {
   assert.equal(textoEntrante(de('status@broadcast', { conversation: 'hola' })), null)
   assert.equal(textoEntrante(de('57300@s.whatsapp.net', { imageMessage: {} })), null)
   assert.equal(textoEntrante(de('57300@s.whatsapp.net', { conversation: '   ' })), null)
+})
+test('el numero real se envia al backend para reconocer usuarios verificados', async () => {
+  const llamadas = []
+  globalThis.fetch = async (url, opciones) => {
+    llamadas.push(JSON.parse(opciones.body))
+    return { ok: true, status: 200, json: async () => ({ reply: 'ok' }) }
+  }
+
+  await pedirRespuesta({ ...comun, de: '1234@lid', telefono: '573010944197', texto: 'cotizar' })
+  await pedirRespuesta({ ...comun, de: '1234@lid', telefono: null, texto: 'hola' })
+
+  assert.deepEqual(llamadas[0], { from: '1234@lid', text: 'cotizar', phone: '573010944197' })
+  assert.deepEqual(llamadas[1], { from: '1234@lid', text: 'hola' })
+})
+
+test('el numero sale del chat o de su alias cuando WhatsApp usa @lid', () => {
+  const de = (key) => ({ key })
+
+  assert.equal(telefonoDe(de({ remoteJid: '573010944197@s.whatsapp.net' })), '573010944197')
+  assert.equal(telefonoDe(de({ remoteJid: '573010944197:12@s.whatsapp.net' })), '573010944197')
+  assert.equal(telefonoDe(de({ remoteJid: '98765@lid', remoteJidAlt: '573010944197@s.whatsapp.net' })), '573010944197')
+  assert.equal(telefonoDe(de({ remoteJid: '98765@lid', senderPn: '573010944197@s.whatsapp.net' })), '573010944197')
+  assert.equal(telefonoDe(de({ remoteJid: '98765@lid' })), null)
+  assert.equal(telefonoDe(de({ remoteJid: '123-456@g.us' })), null)
+  assert.equal(telefonoDe({}), null)
 })

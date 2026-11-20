@@ -140,6 +140,8 @@ whatsapp:
   # LLM chain above and sends them to this page for their quotation (default: the frontend, APP_PUBLIC_URL). It never
   # quotes prices or dates.
   site-url: ${WHATSAPP_SITE_URL:${APP_PUBLIC_URL:}}
+  # The number the WhatsApp service is linked to (+57...), shown in the app so users know where to write.
+  bot-number: ${WHATSAPP_BOT_NUMBER:}
 
 app:
   cors:

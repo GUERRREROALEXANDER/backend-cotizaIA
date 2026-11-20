@@ -1,10 +1,11 @@
 // Servicio de WhatsApp de CotizaIA:
 //  - Asistente: quien escribe al numero vinculado conversa con el asistente de CotizaIA (IA del backend).
+//  - Cotizar: un usuario de CotizaIA que verifico su numero crea cotizaciones escribiendo "cotizar".
 //  - Cola: envia los mensajes que deja el backend (codigos de verificacion y avisos de propuestas).
 // Uso: npm start (necesita un archivo .env; mira .env.example).
 import makeWASocket, { DisconnectReason, fetchLatestBaileysVersion, useMultiFileAuthState } from '@whiskeysockets/baileys'
 import pino from 'pino'
-import { NumeroSinWhatsapp, pedirRespuesta, procesarCola, textoEntrante } from './cola.mjs'
+import { NumeroSinWhatsapp, pedirRespuesta, procesarCola, telefonoDe, textoEntrante } from './cola.mjs'
 
 const backendUrl = process.env.BACKEND_URL
 const apiKey = process.env.WHATSAPP_SERVICE_KEY
@@ -40,11 +41,15 @@ function conectar() {
     for (const mensaje of messages) {
       const texto = textoEntrante(mensaje)
       if (!texto) continue
+      const jid = mensaje.key.remoteJid
       try {
-        const respuesta = await pedirRespuesta({ backendUrl, apiKey, de: mensaje.key.remoteJid, texto })
+        // "Escribiendo..." mientras el backend responde: una cotizacion con la IA puede tardar.
+        await socket.sendPresenceUpdate('composing', jid).catch(() => {})
+        const respuesta = await pedirRespuesta({ backendUrl, apiKey, de: jid, telefono: telefonoDe(mensaje), texto })
+        await socket.sendPresenceUpdate('paused', jid).catch(() => {})
         if (respuesta) {
-          await socket.sendMessage(mensaje.key.remoteJid, { text: respuesta })
-          console.log('Respuesta del asistente enviada.')
+          await socket.sendMessage(jid, { text: respuesta })
+          console.log('Respuesta enviada.')
         }
       } catch (error) {
         console.error(`No se pudo responder un mensaje: ${error.message}`)

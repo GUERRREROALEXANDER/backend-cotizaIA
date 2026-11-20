@@ -76,6 +76,9 @@ services:
         sync: false
       - key: WHATSAPP_SITE_URL
         sync: false
+      # The linked number shown in the app, e.g. +573010944197.
+      - key: WHATSAPP_BOT_NUMBER
+        sync: false
 
   # The frontend is deployed on Vercel, not here: frontend-cotizaIA/vercel.json proxies /api/* to this service
   # (same origin for the SameSite=Strict session cookies) and sends the CSP and security headers.
